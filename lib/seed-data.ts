@@ -178,9 +178,7 @@ function applyDemoReservations(seats: Seat[]): void {
 }
 
 export function generateSeedSeats(): Seat[] {
-  const seats = generateSeats();
-  applyDemoReservations(seats);
-  return seats;
+  return generateSeats();
 }
 
 export function getRowSpec(label: string): RowSpec | undefined {

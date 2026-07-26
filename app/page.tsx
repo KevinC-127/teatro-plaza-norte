@@ -74,7 +74,9 @@ export default function Home() {
     const sc: Record<SeatStatus, string> = { free: '#e2e4e9', pending: '#f59e0b', reserved: '#ef4444' };
     updateSeats(Array.from(selectedIds), { status: st, color: sc[st] });
   }, [selectedIds, updateSeats]);
-  const applyRes = useCallback((n: string) => { updateSeats(Array.from(selectedIds), { reservedFor: n }); }, [selectedIds, updateSeats]);
+  const applyRes = useCallback((n: string) => {
+    updateSeats(Array.from(selectedIds), n ? { reservedFor: n, status: 'reserved' as const, color: '#ef4444' } : { reservedFor: '' });
+  }, [selectedIds, updateSeats]);
 
   const alignSel = useCallback(() => {
     setSeats(p => p.map(s => selectedIds.has(s.id) ? { ...s, x: snapX(s.x), y: snapY(s.y) } : s));
@@ -129,8 +131,8 @@ export default function Home() {
           </button>
         )}
         {sidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end" onClick={() => setSidebarOpen(false)}>
-            <div className="flex-1" />
+          <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end">
+            <div className="flex-1" onClick={() => setSidebarOpen(false)} />
             <div onClick={e => e.stopPropagation()} className="max-h-[60vh] overflow-y-auto rounded-t-xl shadow-2xl"
               style={{ backgroundColor: 'var(--bg-surface)' }}>
               <div className="flex justify-between items-center px-3 py-2 border-b" style={{ borderColor: 'var(--border-color)' }}>

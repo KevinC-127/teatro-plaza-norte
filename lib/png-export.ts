@@ -16,12 +16,9 @@ function drawWheelchair(ctx: CanvasRenderingContext2D, cx: number, cy: number, r
   ctx.fillStyle = '#334155';
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(cx, cy + 1, r * 0.55, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx, cy - r * 0.35, r * 0.18, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.arc(cx, cy - r * 0.58, r * 0.35, Math.PI * 0.35, Math.PI * 0.9); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx - r * 0.22, cy - r * 0.55); ctx.lineTo(cx - r * 0.5, cy - r * 0.8); ctx.stroke();
+  ctx.font = `bold ${r * 1.4}px Inter, system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('\u267F', cx, cy + 0.5);
 }
 
 export function generateFilename(selected: Seat[]): string {
