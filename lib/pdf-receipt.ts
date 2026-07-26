@@ -299,6 +299,213 @@ window.onload = function () {
   }
 }
 
+export function generateExecutiveSummary(allSeats: Seat[]): void {
+  const reserved = allSeats.filter(s => s.status === 'reserved' && s.reservedFor?.trim());
+
+  if (reserved.length === 0) return;
+
+  const grouped = new Map<string, Seat[]>();
+  for (const s of reserved) {
+    const name = s.reservedFor.trim();
+    if (!grouped.has(name)) grouped.set(name, []);
+    grouped.get(name)!.push(s);
+  }
+
+  const sortedNames = Array.from(grouped.keys()).sort();
+  let globalTotal = 0;
+  let globalSeats = 0;
+
+  const today = new Date().toLocaleDateString('es-PE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
+  const rows: string[] = [];
+  for (const name of sortedNames) {
+    const seats = grouped.get(name)!;
+    const customerTotal = seats.reduce((sum, s) => sum + s.price, 0);
+    globalTotal += customerTotal;
+    globalSeats += seats.length;
+
+    const seatList = [...seats].sort((a, b) => {
+      if (a.rowLabel !== b.rowLabel) return a.rowLabel.localeCompare(b.rowLabel);
+      return Number(a.seatNumber) - Number(b.seatNumber);
+    }).map(s => `${s.rowLabel}-${s.seatNumber}`).join(', ');
+
+    rows.push(`
+    <tr class="customer-row">
+      <td class="name">${name}</td>
+      <td>${seatList}</td>
+      <td class="num">${seats.length}</td>
+      <td class="price">S/ ${customerTotal.toFixed(2)}</td>
+    </tr>`);
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Resumen Ejecutivo - Teatro Plaza Norte</title>
+<style>
+  @page { margin: 12mm; size: A4 portrait; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #f5f5f5;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+  .report {
+    max-width: 210mm;
+    width: 100%;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    padding: 28px 32px;
+    page-break-after: avoid;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid #eab308;
+  }
+  .header .title {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1a1a2e;
+    letter-spacing: -0.3px;
+  }
+  .header .title small {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: #71717a;
+    margin-top: 2px;
+  }
+  .header .date {
+    text-align: right;
+    font-size: 12px;
+    color: #71717a;
+  }
+  .summary-cards {
+    display: flex;
+    gap: 12px;
+    margin: 16px 0 20px;
+  }
+  .card {
+    flex: 1;
+    padding: 12px 16px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .card .label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .card .value { font-size: 22px; font-weight: 800; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    margin-top: 8px;
+  }
+  thead th {
+    background: #f4f4f5;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 700;
+    color: #27272a;
+    border-bottom: 2px solid #d4d4d8;
+    white-space: nowrap;
+  }
+  thead th:last-child,
+  thead th:nth-last-child(2) { text-align: right; }
+  tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #e4e4e7;
+    color: #18181b;
+    vertical-align: top;
+  }
+  tbody td:last-child,
+  tbody td:nth-last-child(2) { text-align: right; white-space: nowrap; }
+  tbody .name { font-weight: 700; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; }
+  .price { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .footer {
+    margin-top: 24px;
+    text-align: center;
+    color: #a1a1aa;
+    font-size: 11px;
+    border-top: 1px solid #e4e4e7;
+    padding-top: 14px;
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .report { box-shadow: none; border-radius: 0; padding: 20px 32px; }
+  }
+</style>
+</head>
+<body>
+<div class="report">
+  <div class="header">
+    <div class="title">
+      Resumen Ejecutivo
+      <small>Teatro Plaza Norte</small>
+    </div>
+    <div class="date">
+      Generado: ${today}
+    </div>
+  </div>
+
+  <div class="summary-cards">
+    <div class="card" style="background:#fef3c7;">
+      <div class="label" style="color:#92400e;">Clientes</div>
+      <div class="value" style="color:#78350f;">${sortedNames.length}</div>
+    </div>
+    <div class="card" style="background:#f3e8ff;">
+      <div class="label" style="color:#6b21a8;">Asientos</div>
+      <div class="value" style="color:#581c87;">${globalSeats}</div>
+    </div>
+    <div class="card" style="background:#dcfce7;">
+      <div class="label" style="color:#166534;">Ingresos</div>
+      <div class="value" style="color:#14532d;">S/ ${globalTotal.toFixed(2)}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:18%">Cliente</th>
+        <th>Asientos</th>
+        <th style="width:10%;text-align:right">Cantidad</th>
+        <th style="width:18%;text-align:right">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.join('\n')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Teatro Plaza Norte &bull; Resumen ejecutivo &bull; ${today}
+  </div>
+</div>
+<script>
+window.onload = function () {
+  setTimeout(function () { window.print(); }, 500);
+};
+</script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write(html);
+    win.document.close();
+  }
+}
+
 export function getPurchaseCounter(): number {
   if (typeof window === 'undefined') return 1;
   const val = localStorage.getItem('teatro-purchase-counter');

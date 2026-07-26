@@ -17,13 +17,14 @@ interface ToolbarProps {
   onGeneratePDF: () => void;
   onExport: () => void;
   onImport: (json: string) => void;
+  onGenerateSummary: () => void;
 }
 
 export function Toolbar({
   theme, onToggleTheme, selectedCount, multiSelect, onToggleMultiSelect,
   onGeneratePNG, onGenerateFullMap, onClearSelection,
   customers, selectedCustomer, onSelectCustomer, onGeneratePDF,
-  onExport, onImport,
+  onExport, onImport, onGenerateSummary,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const s = { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' };
@@ -71,6 +72,11 @@ export function Toolbar({
       </button>
       <button onClick={() => fileRef.current?.click()} className="px-2 py-1 rounded border font-medium" style={b}>
         Importar
+      </button>
+
+      <button onClick={onGenerateSummary} className="px-2 py-1 rounded border font-medium"
+        style={{ backgroundColor: '#0891b2', borderColor: '#0e7490', color: '#fff' }}>
+        Resumen
       </button>
 
       {customers.length > 0 && (

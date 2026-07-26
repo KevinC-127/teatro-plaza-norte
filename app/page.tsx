@@ -8,7 +8,7 @@ import { generateSeedSeats } from '@/lib/seed-data';
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
 import { generatePNG, generateFullMapPNG } from '@/lib/png-export';
-import { generatePDFReceipt, getPurchaseCounter, incrementPurchaseCounter } from '@/lib/pdf-receipt';
+import { generatePDFReceipt, generateExecutiveSummary, getPurchaseCounter, incrementPurchaseCounter } from '@/lib/pdf-receipt';
 import { exportJSON, importJSON } from '@/lib/storage';
 import { snapX, snapY } from '@/lib/seat-layout';
 import type { Seat, SeatStatus, SeatBlock } from '@/types/seat';
@@ -120,6 +120,11 @@ export default function Home() {
     toastFn('PDF generado para ' + selectedCustomer);
   }, [seats, selectedCustomer, toastFn]);
 
+  const handleSummary = useCallback(() => {
+    generateExecutiveSummary(seats);
+    toastFn('Resumen ejecutivo generado');
+  }, [seats, toastFn]);
+
   const handleExport = useCallback(() => {
     const json = exportJSON(seats, 'Teatro Plaza Norte', 'ESCENARIO');
     const blob = new Blob([json], { type: 'application/json' });
@@ -154,6 +159,7 @@ export default function Home() {
         customers={customers} selectedCustomer={selectedCustomer}
         onSelectCustomer={setSelectedCustomer} onGeneratePDF={handleGeneratePDF}
         onExport={handleExport} onImport={handleImport}
+        onGenerateSummary={handleSummary}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">
