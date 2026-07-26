@@ -154,7 +154,7 @@ export function SeatMap({
       e.preventDefault();
       e.stopPropagation();
     },
-    [editMode, onToggleSelect]
+    [editMode, multiSelect, onToggleSelect]
   );
 
   useEffect(() => {

@@ -30,6 +30,7 @@ export default function Home() {
   const [showGrid, setShowGrid] = useState(false);
   const [toast, setToast] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const init = useRef(false);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function Home() {
     if (selectedIds.size === 0) { toastFn('Selecciona al menos un asiento'); return; }
     const mx = Math.max(...seats.map(s => s.x), 0) + 40;
     const my = Math.max(...seats.map(s => s.y), 0) + 40;
-    generatePNG(seats, selectedIds, Math.max(mx + 180, 1800), my + 40, showGrid, theme);
+    generatePNG(seats, selectedIds, Math.max(mx + 60, 1100), my + 40, showGrid, theme);
     toastFn('PNG generado');
   }, [seats, selectedIds, showGrid, theme, toastFn]);
 
@@ -116,13 +117,42 @@ export default function Home() {
             onClearSelection={clearSelection} onAddSeat={addSeat}
           />
         </div>
-        <Sidebar singleSeat={single} selectedCount={selectedIds.size}
-          onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
-          onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
-          onApplyStatus={applyStatus} onApplyColor={applyColor}
-          onApplyReservation={applyRes} onClearReservation={() => applyRes('')}
-          editMode={editMode}
-        />
+        <div className="hidden lg:block">
+          <Sidebar singleSeat={single} selectedCount={selectedIds.size}
+            onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
+            onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
+            onApplyStatus={applyStatus} onApplyColor={applyColor}
+            onApplyReservation={applyRes} onClearReservation={() => applyRes('')}
+            editMode={editMode}
+          />
+        </div>
+        {!sidebarOpen && (
+          <button onClick={() => setSidebarOpen(true)}
+            className="lg:hidden fixed bottom-3 right-3 z-40 w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-lg font-bold"
+            style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
+            {selectedIds.size > 0 ? selectedIds.size : '+'}
+          </button>
+        )}
+        {sidebarOpen && (
+          <div className="lg:hidden fixed inset-0 z-40 flex flex-col justify-end" onClick={() => setSidebarOpen(false)}>
+            <div className="flex-1" />
+            <div onClick={e => e.stopPropagation()} className="max-h-[60vh] overflow-y-auto rounded-t-xl shadow-2xl"
+              style={{ backgroundColor: 'var(--bg-surface)' }}>
+              <div className="flex justify-between items-center px-3 py-2 border-b" style={{ borderColor: 'var(--border-color)' }}>
+                <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Detalle</span>
+                <button onClick={() => setSidebarOpen(false)} className="text-lg px-2"
+                  style={{ color: 'var(--text-secondary)' }}>x</button>
+              </div>
+              <Sidebar singleSeat={single} selectedCount={selectedIds.size}
+                onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
+                onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
+                onApplyStatus={applyStatus} onApplyColor={applyColor}
+                onApplyReservation={applyRes} onClearReservation={() => applyRes('')}
+                editMode={editMode}
+              />
+            </div>
+          </div>
+        )}
       </div>
       {toast && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm z-50"
