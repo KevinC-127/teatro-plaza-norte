@@ -5,22 +5,39 @@ const SCALE = 4;
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+
+function drawWheelchair(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+  ctx.fillStyle = '#334155';
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx, cy + 1, r * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, cy - r * 0.35, r * 0.18, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 0.58, r * 0.35, Math.PI * 0.35, Math.PI * 0.9); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - r * 0.22, cy - r * 0.55); ctx.lineTo(cx - r * 0.5, cy - r * 0.8); ctx.stroke();
+}
+
+export function generateFilename(selected: Seat[]): string {
+  const cats = [...new Set(selected.map(s => s.category).filter(Boolean))];
+  const names = [...new Set(selected.map(s => s.reservedFor).filter(Boolean))];
+  const count = selected.length;
+  const catStr = cats.length > 0 ? cats.join(' - ') : 'Sin categoria';
+  const nameStr = names.length > 0 ? names.join(' & ') : 'sin-reservar';
+  return `${catStr} - ${nameStr} x${count}.png`
+    .replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_.]/g, '');
 }
 
 export function generatePNG(
   seats: Seat[], selectedIds: Set<string>,
   width: number, height: number,
-  _gridSize: number, showGrid: boolean, theme: 'dark' | 'light'
+  showGrid: boolean, theme: 'dark' | 'light'
 ): void {
   const selected = seats.filter(s => selectedIds.has(s.id))
     .sort((a, b) => {
@@ -29,11 +46,8 @@ export function generatePNG(
       return Number(a.seatNumber) - Number(b.seatNumber);
     });
 
-  const infoLines = selected.length;
-  const lineH = 18;
-  const infPad = 20;
-  const infHead = 24;
-  const infoH = infoLines > 0 ? infHead + infoLines * lineH + infPad * 2 : 0;
+  const lineH = 26; const infPad = 24; const infHead = 32;
+  const infoH = selected.length > 0 ? infHead + selected.length * lineH + infPad * 2 : 0;
 
   const mapW = width;
   const mapH = height;
@@ -49,8 +63,7 @@ export function generatePNG(
   const tc = theme === 'dark' ? '#e4e4e7' : '#18181b';
   const mc = theme === 'dark' ? '#a1a1aa' : '#71717a';
 
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, mapW, totalH);
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, mapW, totalH);
 
   if (showGrid) {
     ctx.strokeStyle = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.05)';
@@ -59,134 +72,68 @@ export function generatePNG(
     for (let y = 30; y < mapH; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(mapW, y); ctx.stroke(); }
   }
 
-  const rows = new Map<string, { label: string; y: number; total: number }>();
+  const rowMap = new Map<string, { label: string; y: number }>();
   for (const s of seats) {
-    const key = s.rowLabel;
-    if (!rows.has(key)) rows.set(key, { label: s.rowLabel, y: s.y, total: 0 });
-    rows.get(key)!.total++;
+    if (!rowMap.has(s.rowLabel)) rowMap.set(s.rowLabel, { label: s.rowLabel, y: s.y });
   }
-  const sortedRows = Array.from(rows.values()).sort((a, b) => a.y - b.y);
+  const sortedRows = Array.from(rowMap.values()).sort((a, b) => a.y - b.y);
 
   ctx.font = '700 12px Inter, system-ui, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   for (const row of sortedRows) {
-    ctx.fillStyle = mc;
-    ctx.fillText(row.label, 68, row.y + 12);
+    ctx.fillStyle = mc; ctx.fillText(row.label, 68, row.y + 12);
   }
 
-  const totalPanelX = mapW - 140;
-  ctx.fillStyle = theme === 'dark' ? '#161618' : '#ffffff';
-  roundRect(ctx, totalPanelX, 20, 120, 14 + sortedRows.length * 16 + 8, 6);
-  ctx.fill();
-  ctx.strokeStyle = theme === 'dark' ? '#27272c' : '#d4d4d8';
-  ctx.lineWidth = 0.5;
-  ctx.stroke();
-  ctx.font = '700 11px Inter, system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = tc;
-  ctx.fillText('TOTAL', totalPanelX + 60, 34);
-  ctx.font = '600 10px Inter, system-ui, sans-serif';
-  ctx.textAlign = 'right';
-  let grand = 0;
-  sortedRows.forEach((row, i) => {
-    ctx.fillStyle = mc;
-    ctx.fillText(row.label, totalPanelX + 35, 48 + i * 14);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = tc;
-    ctx.fillText(String(row.total), totalPanelX + 105, 48 + i * 14);
-    grand += row.total;
-  });
-  ctx.strokeStyle = theme === 'dark' ? '#3f3f46' : '#d4d4d8';
-  ctx.beginPath();
-  ctx.moveTo(totalPanelX + 8, 44 + sortedRows.length * 14);
-  ctx.lineTo(totalPanelX + 112, 44 + sortedRows.length * 14);
-  ctx.stroke();
-  ctx.font = '700 10px Inter, system-ui, sans-serif';
-  ctx.fillStyle = tc;
-  ctx.fillText(String(grand), totalPanelX + 105, 52 + sortedRows.length * 14);
-  ctx.textAlign = 'left';
-
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const SW = 28, SH = 24;
 
   for (const seat of seats) {
-    const sx = seat.x;
-    const sy = seat.y;
+    const sx = seat.x; const sy = seat.y;
     const isSel = selectedIds.has(seat.id);
-
     ctx.fillStyle = seat.color;
-    roundRect(ctx, sx, sy, SW, SH, 4);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillRect(sx + 2, sy, SW - 4, 2);
-
-    if (isSel) {
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
+    roundRect(ctx, sx, sy, SW, SH, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 0.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(sx + 2, sy, SW - 4, 2);
+    if (isSel) { ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.stroke(); }
     if (seat.accessibilityType === 'wheelchair-space') {
-      ctx.fillStyle = '#334155';
-      ctx.beginPath();
-      ctx.arc(sx + SW - 4, sy + SH - 4, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = '600 6px Inter, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('W', sx + SW - 4, sy + SH - 4);
+      drawWheelchair(ctx, sx + SW - 5, sy + SH - 5, 6);
     }
-
     ctx.fillStyle = '#1a1a1a';
-    ctx.font = '700 9px Inter, system-ui, sans-serif';
-    ctx.textAlign = 'center';
+    ctx.font = '700 9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(seat.seatNumber, sx + SW / 2, sy + SH / 2);
   }
 
-  ctx.fillStyle = mc;
-  ctx.font = '600 9px Inter, system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('ESCENARIO', mapW / 2, 10);
+  ctx.fillStyle = mc; ctx.font = '600 9px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('ESCENARIO', mapW / 2, 10);
 
-  if (infoLines > 0 && infoH > 0) {
+  if (selected.length > 0 && infoH > 0) {
     const iy = mapH + 20;
     ctx.fillStyle = theme === 'dark' ? '#161618' : '#ffffff';
-    roundRect(ctx, 16, iy, mapW - 32, infoH - 10, 8);
-    ctx.fill();
+    roundRect(ctx, 16, iy, mapW - 32, infoH - 10, 8); ctx.fill();
     ctx.strokeStyle = theme === 'dark' ? '#27272c' : '#d4d4d8';
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
+    ctx.lineWidth = 0.5; ctx.stroke();
 
     ctx.fillStyle = tc;
-    ctx.font = '700 12px Inter, system-ui, sans-serif';
+    ctx.font = '700 14px Inter, system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`Butacas seleccionadas (${infoLines}):`, 36, iy + infPad + 8);
+    ctx.fillText(`Butacas seleccionadas (${selected.length}):`, 36, iy + infPad + 10);
 
-    ctx.font = '600 10px Inter, system-ui, sans-serif';
-
-    const colX = [36, 210, 310, 480, 520];
+    const colX = [36, 240, 360, 540, 720];
     const headers = ['Categoria', 'Asiento', 'Estado', 'Reservado', 'Precio'];
     ctx.fillStyle = mc;
-    ctx.font = '700 9px Inter, system-ui, sans-serif';
+    ctx.font = '700 11px Inter, system-ui, sans-serif';
     for (let ci = 0; ci < headers.length; ci++) {
-      ctx.fillText(headers[ci], colX[ci], iy + infPad + infHead - 6);
+      ctx.fillText(headers[ci], colX[ci], iy + infPad + infHead - 4);
     }
     ctx.strokeStyle = theme === 'dark' ? '#3f3f46' : '#d4d4d8';
     ctx.beginPath();
-    ctx.moveTo(36, iy + infPad + infHead - 2);
-    ctx.lineTo(mapW - 36, iy + infPad + infHead - 2);
+    ctx.moveTo(36, iy + infPad + infHead); ctx.lineTo(mapW - 36, iy + infPad + infHead);
     ctx.stroke();
 
-    ctx.font = '600 10px Inter, system-ui, sans-serif';
+    ctx.font = '600 12px Inter, system-ui, sans-serif';
     for (let i = 0; i < selected.length; i++) {
       const s = selected[i];
-      const ly = iy + infPad + infHead + i * lineH + 4;
+      const ly = iy + infPad + infHead + i * lineH + 8;
       ctx.fillStyle = tc;
       ctx.fillText(s.category || s.block, colX[0], ly);
       ctx.fillText(`${s.rowLabel}-${s.seatNumber}`, colX[1], ly);
@@ -198,13 +145,13 @@ export function generatePNG(
     }
   }
 
+  const filename = generateFilename(selected);
+
   canvas.toBlob(blob => {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'plaza-norte-seleccion.png';
-    a.click();
-    URL.revokeObjectURL(url);
+    a.href = url; a.download = filename;
+    a.click(); URL.revokeObjectURL(url);
   }, 'image/png');
 }

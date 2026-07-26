@@ -91,7 +91,7 @@ export default function Home() {
     if (selectedIds.size === 0) { toastFn('Selecciona al menos un asiento'); return; }
     const mx = Math.max(...seats.map(s => s.x), 0) + 40;
     const my = Math.max(...seats.map(s => s.y), 0) + 40;
-    generatePNG(seats, selectedIds, Math.max(mx + 180, 1800), my + 40, 0, showGrid, theme);
+    generatePNG(seats, selectedIds, Math.max(mx + 180, 1800), my + 40, showGrid, theme);
     toastFn('PNG generado');
   }, [seats, selectedIds, showGrid, theme, toastFn]);
 
