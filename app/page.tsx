@@ -26,6 +26,7 @@ export default function Home() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [editMode, setEditMode] = useState(false);
+  const [multiSelect, setMultiSelect] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
   const [toast, setToast] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -101,7 +102,8 @@ export default function Home() {
       <Toolbar theme={theme} onToggleTheme={toggleTheme}
         editMode={editMode} onToggleEditMode={() => setEditMode(v => !v)}
         showGrid={showGrid} onToggleGrid={() => setShowGrid(v => !v)}
-        selectedCount={selectedIds.size}
+        selectedCount={selectedIds.size} multiSelect={multiSelect}
+        onToggleMultiSelect={() => setMultiSelect(v => !v)}
         onAlignSelected={alignSel} onResetPositions={resetSel}
         onWhatsAppCopy={whatsapp} onGeneratePNG={png}
         onClearSelection={clearSelection}
@@ -109,7 +111,7 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">
           <SeatMap seats={seats} selectedIds={selectedIds}
-            editMode={editMode} showGrid={showGrid}
+            editMode={editMode} showGrid={showGrid} multiSelect={multiSelect}
             onToggleSelect={toggleSelect} onMoveSeats={moveSeats}
             onClearSelection={clearSelection} onAddSeat={addSeat}
           />

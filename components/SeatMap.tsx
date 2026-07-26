@@ -14,6 +14,7 @@ interface SeatMapProps {
   selectedIds: Set<string>;
   editMode: boolean;
   showGrid: boolean;
+  multiSelect: boolean;
   onToggleSelect: (id: string, ctrlKey: boolean) => void;
   onMoveSeats: (ids: string[], dx: number, dy: number) => void;
   onClearSelection: () => void;
@@ -78,7 +79,7 @@ function findBestRowForBlock(seats: Seat[], block: SeatBlock): { rowLabel: strin
 }
 
 export function SeatMap({
-  seats, selectedIds, editMode, showGrid,
+  seats, selectedIds, editMode, showGrid, multiSelect,
   onToggleSelect, onMoveSeats, onClearSelection, onAddSeat,
 }: SeatMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -115,8 +116,8 @@ export function SeatMap({
     (e: React.MouseEvent, seatId: string) => {
       const ctrl = e.ctrlKey || e.metaKey;
 
-      if (!editMode || ctrl) {
-        onToggleSelect(seatId, ctrl);
+      if (!editMode || ctrl || multiSelect) {
+        onToggleSelect(seatId, ctrl || multiSelect);
         setDragging(false);
         dragRef.current = null;
         return;

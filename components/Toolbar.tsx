@@ -10,6 +10,8 @@ interface ToolbarProps {
   showGrid: boolean;
   onToggleGrid: () => void;
   selectedCount: number;
+  multiSelect: boolean;
+  onToggleMultiSelect: () => void;
   onAlignSelected: () => void;
   onResetPositions: () => void;
   onWhatsAppCopy: () => void;
@@ -19,7 +21,7 @@ interface ToolbarProps {
 
 export function Toolbar({
   theme, onToggleTheme, editMode, onToggleEditMode,
-  showGrid, onToggleGrid, selectedCount,
+  showGrid, onToggleGrid, selectedCount, multiSelect, onToggleMultiSelect,
   onAlignSelected, onResetPositions,
   onWhatsAppCopy, onGeneratePNG, onClearSelection,
 }: ToolbarProps) {
@@ -39,6 +41,12 @@ export function Toolbar({
       <button onClick={onToggleEditMode} className={`px-2 py-1 rounded border font-medium ${editMode ? 'text-white' : ''}`}
         style={editMode ? { backgroundColor: '#ca8a04', borderColor: '#a16207', color: '#fff' } : b}>
         {editMode ? 'Editando' : 'Editar'}
+      </button>
+
+      <button onClick={onToggleMultiSelect} className={`px-2 py-1 rounded border font-medium ${multiSelect ? 'text-white' : ''}`}
+        style={multiSelect ? { backgroundColor: '#7c3aed', borderColor: '#6d28d9', color: '#fff' } : b}
+        title="Multi-seleccion: cada click agrega/quita sin arrastrar">
+        {multiSelect ? 'Multi ON' : 'Multi'}
       </button>
 
       {editMode && (
