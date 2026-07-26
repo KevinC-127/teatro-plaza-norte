@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 
 interface ToolbarProps {
   theme: 'dark' | 'light';
@@ -15,20 +15,35 @@ interface ToolbarProps {
   selectedCustomer: string | null;
   onSelectCustomer: (name: string | null) => void;
   onGeneratePDF: () => void;
+  onExport: () => void;
+  onImport: (json: string) => void;
 }
 
 export function Toolbar({
   theme, onToggleTheme, selectedCount, multiSelect, onToggleMultiSelect,
   onGeneratePNG, onGenerateFullMap, onClearSelection,
   customers, selectedCustomer, onSelectCustomer, onGeneratePDF,
+  onExport, onImport,
 }: ToolbarProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
   const s = { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' };
   const b = { backgroundColor: 'var(--bg-surface-hover)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => { onImport(reader.result as string); };
+    reader.readAsText(f);
+    e.target.value = '';
+  };
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b flex-wrap text-xs" style={s}>
       <span className="font-semibold mr-1 select-none" style={{ color: 'var(--text-primary)' }}>Teatro Plaza Norte</span>
       <div className="h-4 w-px mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
+
+      <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
 
       <button onClick={onToggleTheme} className="px-2 py-1 rounded border" style={b}
         title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
@@ -49,6 +64,13 @@ export function Toolbar({
       <button onClick={onToggleMultiSelect} className={`px-2 py-1 rounded border font-medium ${multiSelect ? 'text-white' : ''}`}
         style={multiSelect ? { backgroundColor: '#7c3aed', borderColor: '#6d28d9', color: '#fff' } : b}>
         {multiSelect ? 'Multi ON' : 'Multi'}
+      </button>
+
+      <button onClick={onExport} className="px-2 py-1 rounded border font-medium" style={b}>
+        Exportar
+      </button>
+      <button onClick={() => fileRef.current?.click()} className="px-2 py-1 rounded border font-medium" style={b}>
+        Importar
       </button>
 
       {customers.length > 0 && (
