@@ -15,7 +15,7 @@ interface SeatComponentProps {
 }
 
 function accessibilityIcon(type: Seat['accessibilityType']): string {
-  return type === 'wheelchair-space' ? 'W' : '';
+  return type === 'wheelchair-space' ? '\u267F' : '';
 }
 
 export function SeatComponent({

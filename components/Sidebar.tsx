@@ -7,10 +7,10 @@ import { getStatusLabel } from '@/lib/seat-layout';
 interface SidebarProps {
   singleSeat: Seat | null;
   selectedCount: number;
+  selectedSeats: Seat[];
   onUpdateSeat: (changes: Partial<Seat>) => void;
   onUpdateSelected: (changes: Partial<Seat>) => void;
   onApplyStatus: (status: SeatStatus) => void;
-  onApplyColor: (color: string) => void;
   onApplyReservation: (name: string) => void;
   onClearReservation: () => void;
   editMode: boolean;
@@ -22,19 +22,17 @@ const STATUS_OPTS: { value: SeatStatus; label: string; color: string }[] = [
   { value: 'reserved', label: 'Reservado', color: '#ef4444' },
 ];
 
-const PRESET_COLORS = ['#e2e4e9', '#f59e0b', '#ef4444', '#eab308', '#22c55e'];
-
 export function Sidebar({
-  singleSeat, selectedCount, onUpdateSeat, onUpdateSelected,
-  onApplyStatus, onApplyColor, onApplyReservation, onClearReservation,
-  editMode,
+  singleSeat, selectedCount, selectedSeats, onUpdateSeat, onUpdateSelected,
+  onApplyStatus, onApplyReservation, onClearReservation, editMode,
 }: SidebarProps) {
   const [reserveName, setReserveName] = useState('');
-  const [colorInput, setColorInput] = useState('#e2e4e9');
 
   const surface = { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' };
   const inp: React.CSSProperties = { backgroundColor: 'var(--bg-surface-hover)', borderColor: 'var(--border-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' };
   const btn: React.CSSProperties = { backgroundColor: 'var(--bg-surface-hover)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' };
+
+  const totalPrice = selectedSeats.reduce((sum, s) => sum + s.price, 0);
 
   return (
     <div className="w-72 border-l p-3 overflow-y-auto text-xs flex flex-col gap-3" style={surface}>
@@ -45,6 +43,13 @@ export function Sidebar({
           ? `${selectedCount} butacas`
           : 'Sin seleccion'}
       </h2>
+
+      {selectedCount > 1 && (
+        <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)' }}>
+          <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Precio total</div>
+          <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>S/ {totalPrice.toFixed(2)}</div>
+        </div>
+      )}
 
       {singleSeat && (
         <div className="flex flex-col gap-2">
@@ -108,19 +113,6 @@ export function Sidebar({
                 {opt.label}
               </button>
             ))}
-          </div>
-
-          <label style={{ color: 'var(--text-muted)', fontSize: 10 }}>Color</label>
-          <div className="flex gap-1 flex-wrap">
-            {PRESET_COLORS.map(c => (
-              <button key={c} onClick={() => onApplyColor(c)} className="w-5 h-5 rounded border hover:scale-110"
-                style={{ backgroundColor: c, borderColor: 'rgba(0,0,0,0.2)' }} />
-            ))}
-          </div>
-          <div className="flex gap-1">
-            <input type="color" value={colorInput} onChange={e => setColorInput(e.target.value)}
-              className="w-7 h-5 rounded border cursor-pointer" style={{ borderColor: 'var(--border-color)' }} />
-            <button onClick={() => onApplyColor(colorInput)} className="px-2 py-0.5 rounded text-[10px]" style={btn}>Aplicar</button>
           </div>
 
           <label style={{ color: 'var(--text-muted)', fontSize: 10 }}>Reservado para</label>

@@ -101,13 +101,9 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Toolbar theme={theme} onToggleTheme={toggleTheme}
-        editMode={editMode} onToggleEditMode={() => setEditMode(v => !v)}
-        showGrid={showGrid} onToggleGrid={() => setShowGrid(v => !v)}
         selectedCount={selectedIds.size} multiSelect={multiSelect}
         onToggleMultiSelect={() => setMultiSelect(v => !v)}
-        onAlignSelected={alignSel} onResetPositions={resetSel}
-        onWhatsAppCopy={whatsapp} onGeneratePNG={png}
-        onClearSelection={clearSelection}
+        onGeneratePNG={png} onClearSelection={clearSelection}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">
@@ -118,12 +114,11 @@ export default function Home() {
           />
         </div>
         <div className="hidden lg:block">
-          <Sidebar singleSeat={single} selectedCount={selectedIds.size}
+          <Sidebar singleSeat={single} selectedCount={selectedIds.size} selectedSeats={sel}
             onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
             onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
-            onApplyStatus={applyStatus} onApplyColor={applyColor}
-            onApplyReservation={applyRes} onClearReservation={() => applyRes('')}
-            editMode={editMode}
+            onApplyStatus={applyStatus} onApplyReservation={applyRes}
+            onClearReservation={() => applyRes('')} editMode={editMode}
           />
         </div>
         {!sidebarOpen && (
@@ -143,12 +138,11 @@ export default function Home() {
                 <button onClick={() => setSidebarOpen(false)} className="text-lg px-2"
                   style={{ color: 'var(--text-secondary)' }}>x</button>
               </div>
-              <Sidebar singleSeat={single} selectedCount={selectedIds.size}
+              <Sidebar singleSeat={single} selectedCount={selectedIds.size} selectedSeats={sel}
                 onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
                 onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
-                onApplyStatus={applyStatus} onApplyColor={applyColor}
-                onApplyReservation={applyRes} onClearReservation={() => applyRes('')}
-                editMode={editMode}
+                onApplyStatus={applyStatus} onApplyReservation={applyRes}
+                onClearReservation={() => applyRes('')} editMode={editMode}
               />
             </div>
           </div>
