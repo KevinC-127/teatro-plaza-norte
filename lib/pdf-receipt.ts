@@ -329,7 +329,7 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
     const seatList = [...seats].sort((a, b) => {
       if (a.rowLabel !== b.rowLabel) return a.rowLabel.localeCompare(b.rowLabel);
       return Number(a.seatNumber) - Number(b.seatNumber);
-    }).map(s => `${s.rowLabel}-${s.seatNumber}`).join(', ');
+    }).map(s => `${s.rowLabel}-${s.seatNumber} (${s.category || s.block})`).join(', ');
 
     rows.push(`
     <tr class="customer-row">
@@ -344,7 +344,7 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Resumen Ejecutivo - Teatro Plaza Norte</title>
+<title>Recuento de boletos - Teatro Plaza Norte</title>
 <style>
   @page { margin: 12mm; size: A4 portrait; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -370,7 +370,7 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
     align-items: flex-start;
     margin-bottom: 20px;
     padding-bottom: 14px;
-    border-bottom: 2px solid #eab308;
+    border-bottom: 2px solid #52525b;
   }
   .header .title {
     font-size: 20px;
@@ -450,11 +450,11 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
 <div class="report">
   <div class="header">
     <div class="title">
-      Resumen Ejecutivo
-      <small>Teatro Plaza Norte</small>
+      Recuento de boletos
+      <small>Teatro Plaza Norte - Obra Cipollino - Directora Maritza Rossana Alva Bustamante</small>
     </div>
     <div class="date">
-      Generado: ${today}
+      Fecha: ${today}
     </div>
   </div>
 
@@ -488,7 +488,7 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
   </table>
 
   <div class="footer">
-    Teatro Plaza Norte &bull; Resumen ejecutivo &bull; ${today}
+    Teatro Plaza Norte &bull; Recuento de boletos &bull; ${today}
   </div>
 </div>
 <script>
