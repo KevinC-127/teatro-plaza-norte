@@ -35,6 +35,13 @@ export function SeatMap({
   } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  const seatsRef = useRef(seats);
+  seatsRef.current = seats;
+  const onMoveSeatsRef = useRef(onMoveSeats);
+  onMoveSeatsRef.current = onMoveSeats;
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+
   const maxX = Math.max(...seats.map((s) => s.x), 0) + 60;
   const maxY = Math.max(...seats.map((s) => s.y), 0) + 40;
   const canvasW = Math.max(maxX + 40, 1600);
@@ -57,9 +64,10 @@ export function SeatMap({
       }
 
       const ctrl = e.ctrlKey || e.metaKey;
+      const currentSelected = selectedIdsRef.current;
       onToggleSelect(seatId, ctrl);
 
-      const newSelected = new Set(ctrl ? selectedIds : []);
+      const newSelected = new Set(ctrl ? currentSelected : []);
       if (newSelected.has(seatId)) newSelected.delete(seatId);
       else newSelected.add(seatId);
 
@@ -67,76 +75,106 @@ export function SeatMap({
       if (dragIds.length === 0) return;
       if (!newSelected.has(seatId)) dragIds.push(seatId);
 
+      const currentSeats = seatsRef.current;
       const seatPositions = new Map<string, { x: number; y: number }>();
       for (const id of dragIds) {
-        const seat = seats.find((s) => s.id === id);
+        const seat = currentSeats.find((s) => s.id === id);
         if (seat) seatPositions.set(id, { x: seat.x, y: seat.y });
       }
 
-      dragRef.current = { startMouseX: e.clientX, startMouseY: e.clientY, seatPositions, dragIds };
+      dragRef.current = {
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        seatPositions,
+        dragIds,
+      };
       setDragging(true);
       setDragOffset({ x: 0, y: 0 });
       e.preventDefault();
+      e.stopPropagation();
     },
-    [editMode, selectedIds, seats, onToggleSelect]
+    [editMode, onToggleSelect]
   );
 
   useEffect(() => {
     if (!dragging) return;
+
     const handleMouseMove = (e: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const rawDx = e.clientX - drag.startMouseX;
-      const rawDy = e.clientY - drag.startMouseY;
       const firstId = drag.dragIds[0];
       const firstOrig = drag.seatPositions.get(firstId);
       if (firstOrig) {
-        const sx = snapX(firstOrig.x + rawDx);
-        const sy = snapY(firstOrig.y + rawDy);
+        const sx = snapX(firstOrig.x + (e.clientX - drag.startMouseX));
+        const sy = snapY(firstOrig.y + (e.clientY - drag.startMouseY));
         setDragOffset({ x: sx - firstOrig.x, y: sy - firstOrig.y });
       }
     };
-    const handleMouseUp = (_e: MouseEvent) => {
-      const drag = dragRef.current;
-      if (!drag) { setDragging(false); return; }
 
+    const handleMouseUp = (e: MouseEvent) => {
+      e.preventDefault();
+      const drag = dragRef.current;
+      if (!drag) {
+        setDragging(false);
+        return;
+      }
+
+      const currentSeats = seatsRef.current;
+      const moveFn = onMoveSeatsRef.current;
       const firstId = drag.dragIds[0];
       const firstOrig = drag.seatPositions.get(firstId);
-      if (!firstOrig) { setDragging(false); return; }
 
-      const rawDx = _e.clientX - drag.startMouseX;
-      const rawDy = _e.clientY - drag.startMouseY;
+      if (!firstOrig) {
+        setDragging(false);
+        dragRef.current = null;
+        return;
+      }
+
+      const rawDx = e.clientX - drag.startMouseX;
+      const rawDy = e.clientY - drag.startMouseY;
       const targetX = snapX(firstOrig.x + rawDx);
       const targetY = snapY(firstOrig.y + rawDy);
 
       const excludeIds = new Set(drag.dragIds);
-      const freeCell = findNearestFreeCell(targetX, targetY, seats, excludeIds);
+      const freeCell = findNearestFreeCell(targetX, targetY, currentSeats, excludeIds);
 
       const dx = freeCell.x - firstOrig.x;
       const dy = freeCell.y - firstOrig.y;
 
       if (dx !== 0 || dy !== 0) {
-        onMoveSeats([...drag.dragIds], dx, dy);
+        moveFn([...drag.dragIds], dx, dy);
       }
 
       setDragging(false);
       dragRef.current = null;
     };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setDragging(false);
+        dragRef.current = null;
+      }
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('keydown', handleEscape);
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('keydown', handleEscape);
     };
-  }, [dragging, seats, onMoveSeats]);
+  }, [dragging]);
 
   useEffect(() => {
     if (selectedIds.size === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onClearSelection(); return; }
       if (!editMode) return;
+      if (dragging) return;
+      const currentSeats = seatsRef.current;
       const sIds = Array.from(selectedIds);
-      const firstSeat = seats.find((s) => s.id === sIds[0]);
+      const firstSeat = currentSeats.find((s) => s.id === sIds[0]);
       if (!firstSeat) return;
       const stepX = e.shiftKey ? 32 * 3 : 32;
       const stepY = e.shiftKey ? 30 * 3 : 30;
@@ -150,12 +188,12 @@ export function SeatMap({
       const targetX = snapX(firstSeat.x + dx);
       const targetY = snapY(firstSeat.y + dy);
       const excludeIds = new Set(sIds);
-      const free = findNearestFreeCell(targetX, targetY, seats, excludeIds);
-      onMoveSeats(sIds, free.x - firstSeat.x, free.y - firstSeat.y);
+      const free = findNearestFreeCell(targetX, targetY, currentSeats, excludeIds);
+      onMoveSeatsRef.current(sIds, free.x - firstSeat.x, free.y - firstSeat.y);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, editMode, seats, onMoveSeats, onClearSelection]);
+  }, [selectedIds, editMode, dragging, onClearSelection]);
 
   const getSeatOffset = (seat: Seat): { x: number; y: number } => {
     if (!dragging || !dragRef.current) return { x: 0, y: 0 };
@@ -190,7 +228,7 @@ export function SeatMap({
             style={{
               left: 0,
               top: row.y + 6,
-              width: 40,
+              width: 60,
               textAlign: 'right',
               paddingRight: 8,
               fontSize: 11,

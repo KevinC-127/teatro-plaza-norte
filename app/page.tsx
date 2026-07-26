@@ -9,7 +9,7 @@ import { generateSeedSeats, BLOCK_X, MAX_SIDE_SEATS, SIDE_COUNTS, CENTER_SEATS_P
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
 import { generatePNG } from '@/lib/png-export';
-import { snapX, snapY } from '@/lib/seat-layout';
+import { snapX, snapY, cellIndex } from '@/lib/seat-layout';
 import { CELL_W, CELL_H } from '@/lib/seat-layout';
 import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/seat';
 
@@ -37,47 +37,53 @@ function findBestRowForBlock(
   seats: Seat[],
   block: SeatBlock
 ): { rowLabel: string; y: number; seatNumber: string; x: number } | null {
+  const baseX = BLOCK_X[block];
+
   const allRows = Array.from(
     new Map(
-      seats
-        .filter((s) => s.block === block)
-        .map((s) => [s.rowLabel, s.y])
-    ).entries()
+      seats.filter((s) => s.block === block).map((s) => [s.rowLabel, s.y])
+    )
   )
     .map(([label, y]) => ({ label, y }))
     .sort((a, b) => b.y - a.y);
-
-  if (allRows.length === 0) return null;
 
   for (const row of allRows) {
     const maxCells = block === 'center'
       ? CENTER_SEATS_PER_ROW
       : (SIDE_ROW_MAX[row.label] ?? 4);
 
-    const occupiedXs = new Set(
+    const occupiedCells = new Set(
       seats
         .filter((s) => s.block === block && s.rowLabel === row.label)
-        .map((s) => snapX(s.x))
+        .map((s) => cellIndex(s.x, baseX))
     );
 
-    const baseX = BLOCK_X[block];
-
     for (let cell = 0; cell < maxCells; cell++) {
+      if (occupiedCells.has(cell)) continue;
       let cellX: number;
       if (block === 'left') {
         cellX = baseX + (MAX_SIDE_SEATS - maxCells + cell) * CELL_W;
       } else {
         cellX = baseX + cell * CELL_W;
       }
-      if (!occupiedXs.has(cellX)) {
-        const existing = seats.filter(
-          (s) => s.block === block && s.rowLabel === row.label
-        );
-        const nextNum = existing.length > 0
-          ? Math.max(...existing.map((s) => Number(s.seatNumber) || 0)) + 1
-          : 1;
-        return { rowLabel: row.label, y: row.y, seatNumber: String(nextNum), x: cellX };
+
+      const existing = seats.filter(
+        (s) => s.block === block && s.rowLabel === row.label
+      );
+      const nextNum = existing.length > 0
+        ? Math.max(...existing.map((s) => Number(s.seatNumber) || 0)) + 1
+        : 1;
+
+      let sid = genId(block, row.label, String(nextNum));
+      let num = String(nextNum);
+      let tries = 0;
+      while (seats.some((s) => s.id === sid) && tries < 100) {
+        tries++;
+        num = String(nextNum + tries);
+        sid = genId(block, row.label, num);
       }
+
+      return { rowLabel: row.label, y: row.y, seatNumber: num, x: cellX };
     }
   }
 
@@ -137,7 +143,6 @@ export default function Home() {
     });
   }, []);
 
-  const setSelection = useCallback((ids: Set<string>) => setSelectedIds(ids), []);
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const selectedSeats = useMemo(
@@ -149,11 +154,7 @@ export default function Home() {
     setSeats((prev) =>
       prev.map((s) => {
         if (!ids.includes(s.id)) return s;
-        return {
-          ...s,
-          x: snapX(s.x + dx),
-          y: snapY(s.y + dy),
-        };
+        return { ...s, x: snapX(s.x + dx), y: snapY(s.y + dy) };
       })
     );
   }, []);
@@ -161,10 +162,7 @@ export default function Home() {
   const addSeat = useCallback(
     (block: SeatBlock) => {
       const result = findBestRowForBlock(seats, block);
-      if (!result) {
-        showToast(`No hay celdas disponibles en ${block}`);
-        return;
-      }
+      if (!result) { showToast(`No hay celdas libres en ${block}`); return; }
       const { rowLabel, y, seatNumber, x } = result;
       const sid = genId(block, rowLabel, seatNumber);
 
@@ -197,12 +195,7 @@ export default function Home() {
       setSeats((prev) =>
         prev.map((s) => {
           if (s.block !== blockFilter || s.rowLabel !== oldLabel) return s;
-          return {
-            ...s,
-            rowLabel: newLabel,
-            rowId: `${s.block}-${newLabel}`,
-            id: `${s.block}-${newLabel}-${s.seatNumber}`,
-          };
+          return { ...s, rowLabel: newLabel, rowId: `${s.block}-${newLabel}`, id: `${s.block}-${newLabel}-${s.seatNumber}` };
         })
       );
       setSelectedIds(new Set());

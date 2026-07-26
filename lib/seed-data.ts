@@ -3,55 +3,54 @@ import type { Seat, SeatStatus, AccessibilityType } from '@/types/seat';
 export const CELL_W = 32;
 export const CELL_H = 30;
 const MAX_SIDE_SEATS = 8;
-const CENTER_SEATS_PER_ROW = 28;
-const K_L_GAP_EXTRA = 36;
+export const CENTER_SEATS_PER_ROW = 28;
 
 export const BLOCK_X: Record<string, number> = {
-  left: 44,
-  center: 340,
-  right: 1276,
+  left: 64,
+  center: 352,
+  right: 1280,
 };
 
 const CENTER_ROWS_DEF = [
-  { label: 'X', yBase: 760 },
-  { label: 'W', yBase: 730 },
-  { label: 'V', yBase: 700 },
-  { label: 'U', yBase: 670 },
-  { label: 'T', yBase: 640 },
-  { label: 'S', yBase: 610 },
-  { label: 'R', yBase: 580 },
-  { label: 'Q', yBase: 550 },
-  { label: 'P', yBase: 520 },
-  { label: 'O', yBase: 490 },
-  { label: 'N', yBase: 460 },
-  { label: 'M', yBase: 430 },
-  { label: 'L', yBase: 400 },
-  { label: 'K', yBase: 334 },
-  { label: 'J', yBase: 304 },
-  { label: 'I', yBase: 274 },
-  { label: 'H', yBase: 244 },
-  { label: 'G', yBase: 214 },
-  { label: 'F', yBase: 184 },
-  { label: 'E', yBase: 154 },
-  { label: 'D', yBase: 124 },
-  { label: 'C', yBase: 94 },
-  { label: 'B', yBase: 64 },
-  { label: 'A', yBase: 34 },
+  { label: 'X', yBase: 750 },
+  { label: 'W', yBase: 720 },
+  { label: 'V', yBase: 690 },
+  { label: 'U', yBase: 660 },
+  { label: 'T', yBase: 630 },
+  { label: 'S', yBase: 600 },
+  { label: 'R', yBase: 570 },
+  { label: 'Q', yBase: 540 },
+  { label: 'P', yBase: 510 },
+  { label: 'O', yBase: 480 },
+  { label: 'N', yBase: 450 },
+  { label: 'M', yBase: 420 },
+  { label: 'L', yBase: 390 },
+  { label: 'K', yBase: 330 },
+  { label: 'J', yBase: 300 },
+  { label: 'I', yBase: 270 },
+  { label: 'H', yBase: 240 },
+  { label: 'G', yBase: 210 },
+  { label: 'F', yBase: 180 },
+  { label: 'E', yBase: 150 },
+  { label: 'D', yBase: 120 },
+  { label: 'C', yBase: 90 },
+  { label: 'B', yBase: 60 },
+  { label: 'A', yBase: 30 },
 ];
 
 const SIDE_ROWS_DEF = [
-  { label: 'L', yBase: 400 },
-  { label: 'K', yBase: 334 },
-  { label: 'J', yBase: 304 },
-  { label: 'I', yBase: 274 },
-  { label: 'H', yBase: 244 },
-  { label: 'G', yBase: 214 },
-  { label: 'F', yBase: 184 },
-  { label: 'E', yBase: 154 },
-  { label: 'D', yBase: 124 },
-  { label: 'C', yBase: 94 },
-  { label: 'B', yBase: 64 },
-  { label: 'A', yBase: 34 },
+  { label: 'L', yBase: 390 },
+  { label: 'K', yBase: 330 },
+  { label: 'J', yBase: 300 },
+  { label: 'I', yBase: 270 },
+  { label: 'H', yBase: 240 },
+  { label: 'G', yBase: 210 },
+  { label: 'F', yBase: 180 },
+  { label: 'E', yBase: 150 },
+  { label: 'D', yBase: 120 },
+  { label: 'C', yBase: 90 },
+  { label: 'B', yBase: 60 },
+  { label: 'A', yBase: 30 },
 ];
 
 const SIDE_COUNTS = [8, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3];
@@ -179,4 +178,4 @@ export function generateSeedSeats(): Seat[] {
   return seats;
 }
 
-export { CENTER_SEATS_PER_ROW, CENTER_ROWS_DEF, MAX_SIDE_SEATS, SIDE_COUNTS, K_L_GAP_EXTRA };
+export { MAX_SIDE_SEATS, SIDE_COUNTS, CENTER_ROWS_DEF };
