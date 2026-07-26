@@ -326,15 +326,28 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
     globalTotal += customerTotal;
     globalSeats += seats.length;
 
-    const seatList = [...seats].sort((a, b) => {
+    const sorted = [...seats].sort((a, b) => {
       if (a.rowLabel !== b.rowLabel) return a.rowLabel.localeCompare(b.rowLabel);
       return Number(a.seatNumber) - Number(b.seatNumber);
-    }).map(s => `${s.rowLabel}-${s.seatNumber} (${s.category || s.block})`).join(', ');
+    });
+
+    const byCategory = new Map<string, { label: string; nums: string[] }>();
+    for (const s of sorted) {
+      const cat = s.category || s.block;
+      if (!byCategory.has(cat)) byCategory.set(cat, { label: cat, nums: [] });
+      byCategory.get(cat)!.nums.push(`${s.rowLabel}-${s.seatNumber}`);
+    }
+
+    const parts: string[] = [];
+    for (const [cat, group] of byCategory) {
+      parts.push(`${group.nums.join(', ')} (${cat})`);
+    }
+    const seatList = parts.join('<br>');
 
     rows.push(`
     <tr class="customer-row">
       <td class="name">${name}</td>
-      <td>${seatList}</td>
+      <td class="seats-cell">${seatList}</td>
       <td class="num">${seats.length}</td>
       <td class="price">S/ ${customerTotal.toFixed(2)}</td>
     </tr>`);
@@ -429,6 +442,7 @@ export function generateExecutiveSummary(allSeats: Seat[]): void {
   tbody td:last-child,
   tbody td:nth-last-child(2) { text-align: right; white-space: nowrap; }
   tbody .name { font-weight: 700; white-space: nowrap; }
+  tbody .seats-cell { line-height: 1.6; }
   tbody tr:last-child td { border-bottom: none; }
   .num { font-variant-numeric: tabular-nums; }
   .price { font-variant-numeric: tabular-nums; font-weight: 600; }
