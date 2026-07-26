@@ -8,6 +8,7 @@ interface SidebarProps {
   singleSeat: Seat | null;
   selectedCount: number;
   selectedSeats: Seat[];
+  allSeats: Seat[];
   onUpdateSeat: (changes: Partial<Seat>) => void;
   onUpdateSelected: (changes: Partial<Seat>) => void;
   onApplyStatus: (status: SeatStatus) => void;
@@ -23,7 +24,7 @@ const STATUS_OPTS: { value: SeatStatus; label: string; color: string }[] = [
 ];
 
 export function Sidebar({
-  singleSeat, selectedCount, selectedSeats, onUpdateSeat, onUpdateSelected,
+  singleSeat, selectedCount, selectedSeats, allSeats, onUpdateSeat, onUpdateSelected,
   onApplyStatus, onApplyReservation, onClearReservation, editMode,
 }: SidebarProps) {
   const [reserveName, setReserveName] = useState('');
@@ -44,10 +45,43 @@ export function Sidebar({
           : 'Sin seleccion'}
       </h2>
 
+      {selectedCount === 0 && (() => {
+        const reserved = allSeats.filter(s => s.status === 'reserved');
+        const totalRevenue = reserved.reduce((sum, s) => sum + s.price, 0);
+        return (
+          <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)' }}>
+            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Ingreso total (reservados)</div>
+            <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>S/ {totalRevenue.toFixed(2)}</div>
+            <div className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+              {reserved.length} asiento{reserved.length !== 1 ? 's' : ''} reservado{reserved.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+        );
+      })()}
+
       {selectedCount > 1 && (
         <div className="rounded-lg p-3 text-center" style={{ backgroundColor: 'var(--bg-surface-hover)', border: '1px solid var(--border-color)' }}>
           <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Precio total</div>
           <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>S/ {totalPrice.toFixed(2)}</div>
+        </div>
+      )}
+
+      {selectedCount > 1 && (
+        <div className="flex flex-col gap-1 max-h-40 overflow-y-auto" style={{ fontSize: 10 }}>
+          <h3 style={{ color: 'var(--text-muted)' }} className="font-medium mb-1">Butacas seleccionadas</h3>
+          {[...selectedSeats]
+            .sort((a, b) => {
+              if (a.rowLabel !== b.rowLabel) return a.rowLabel.localeCompare(b.rowLabel);
+              return Number(a.seatNumber) - Number(b.seatNumber);
+            })
+            .map(s => (
+              <div key={s.id} className="flex justify-between px-1 py-0.5 rounded"
+                style={{ backgroundColor: 'var(--bg-surface-hover)' }}>
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{s.rowLabel}-{s.seatNumber}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{s.category || '-'}</span>
+                <span style={{ color: 'var(--text-primary)' }}>S/ {s.price.toFixed(2)}</span>
+              </div>
+            ))}
         </div>
       )}
 

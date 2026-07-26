@@ -140,7 +140,7 @@ export default function Home() {
           />
         </div>
         <div className="hidden lg:block">
-          <Sidebar singleSeat={single} selectedCount={selectedIds.size} selectedSeats={sel}
+          <Sidebar singleSeat={single} selectedCount={selectedIds.size} selectedSeats={sel} allSeats={seats}
             onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
             onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
             onApplyStatus={applyStatus} onApplyReservation={applyRes}
@@ -164,7 +164,7 @@ export default function Home() {
                 <button onClick={() => setSidebarOpen(false)} className="text-lg px-2"
                   style={{ color: 'var(--text-secondary)' }}>x</button>
               </div>
-              <Sidebar singleSeat={single} selectedCount={selectedIds.size} selectedSeats={sel}
+              <Sidebar singleSeat={single} selectedCount={selectedIds.size} selectedSeats={sel} allSeats={seats}
                 onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
                 onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
                 onApplyStatus={applyStatus} onApplyReservation={applyRes}

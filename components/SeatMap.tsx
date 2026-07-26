@@ -100,17 +100,20 @@ export function SeatMap({
   const canvasH = maxY + 40;
 
   const uniqueRows = useMemo(() => {
-    const seen = new Map<string, { label: string; y: number; total: number }>();
+    const seen = new Map<string, { label: string; y: number; total: number; available: number }>();
     for (const s of seats) {
       const key = `${s.rowLabel}@${s.y}`;
-      if (!seen.has(key)) seen.set(key, { label: s.rowLabel, y: s.y, total: 0 });
-      seen.get(key)!.total++;
+      if (!seen.has(key)) seen.set(key, { label: s.rowLabel, y: s.y, total: 0, available: 0 });
+      const row = seen.get(key)!;
+      row.total++;
+      if (s.status === 'free') row.available++;
     }
     return Array.from(seen.values()).sort((a, b) => a.y - b.y);
   }, [seats]);
 
   const totalPanelX = maxX + 100;
   const grandTotal = seats.length;
+  const grandAvailable = seats.filter(s => s.status === 'free').length;
 
   const handleSeatClick = useCallback(
     (e: React.MouseEvent, seatId: string) => {
@@ -252,15 +255,17 @@ export function SeatMap({
         <div className="absolute select-none" style={{
           left: totalPanelX, top: 16,
           backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)',
-          borderRadius: 8, padding: '8px 12px', minWidth: 80,
+          borderRadius: 8, padding: '8px 12px', minWidth: 100,
         }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
             TOTAL
           </div>
           {uniqueRows.map(row => (
             <div key={`t-${row.label}`} className="flex justify-between" style={{ fontSize: 10, padding: '1px 0', color: 'var(--text-secondary)' }}>
-              <span style={{ fontWeight: 600, marginRight: 12 }}>{row.label}</span>
-              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{row.total}</span>
+              <span style={{ fontWeight: 600, marginRight: 8 }}>{row.label}</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
+                {row.total} | {row.available}
+              </span>
             </div>
           ))}
           <div className="flex justify-between" style={{
@@ -268,7 +273,7 @@ export function SeatMap({
             borderTop: '1px solid var(--border-color)', color: 'var(--text-primary)',
           }}>
             <span>Total</span>
-            <span>{grandTotal}</span>
+            <span>{grandTotal} | {grandAvailable}</span>
           </div>
         </div>
       </div>
