@@ -3,12 +3,12 @@ import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/sea
 export const CELL_W = 32;
 export const CELL_H = 30;
 
-const LEFT_INNER = 384;
-const CENTER_START = 448;
-const RIGHT_INNER = 928;
+const LEFT_INNER = 512;
+const CENTER_START = 576;
+const RIGHT_INNER = 1056;
 
 export const BLOCK_X: Record<string, number> = {
-  left: 128,
+  left: 256,
   center: CENTER_START,
   right: RIGHT_INNER,
 };
@@ -25,7 +25,7 @@ interface RowSpec {
 const ROW_SPECS: RowSpec[] = [
   { label: 'X', y: 750, left: { start: 1, count: 11 }, right: { start: 12, count: 10 } },
   { label: 'W', y: 720, left: { start: 1, count: 8 }, right: { start: 9, count: 8 } },
-  { label: 'V', y: 690, left: { start: 1, count: 9 }, center: { start: 10, count: 13 }, right: { start: 23, count: 9 } },
+  { label: 'V', y: 690, left: { start: 1, count: 9 }, center: { start: 10, count: 13 }, right: { start: 23, count: 10 } },
   { label: 'U', y: 660, left: { start: 1, count: 9 }, center: { start: 10, count: 14 }, right: { start: 24, count: 9 } },
   { label: 'T', y: 630, left: { start: 1, count: 9 }, center: { start: 10, count: 14 }, right: { start: 24, count: 9 } },
   { label: 'S', y: 600, left: { start: 1, count: 8 }, center: { start: 9, count: 14 }, right: { start: 23, count: 8 } },

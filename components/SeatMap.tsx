@@ -48,13 +48,16 @@ export function SeatMap({
   const canvasH = maxY + 40;
 
   const uniqueRows = useMemo(() => {
-    const seen = new Map<string, { label: string; y: number }>();
+    const seen = new Map<string, { label: string; y: number; total: number }>();
     for (const s of seats) {
       const key = `${s.rowLabel}@${s.y}`;
-      if (!seen.has(key)) seen.set(key, { label: s.rowLabel, y: s.y });
+      if (!seen.has(key)) seen.set(key, { label: s.rowLabel, y: s.y, total: 0 });
+      seen.get(key)!.total++;
     }
     return Array.from(seen.values()).sort((a, b) => a.y - b.y);
   }, [seats]);
+
+  const totalX = Math.max(maxX + 20, 1500);
 
   const handleSeatClick = useCallback(
     (e: React.MouseEvent, seatId: string) => {
@@ -236,6 +239,23 @@ export function SeatMap({
             }}
           >
             {row.label}
+          </div>
+        ))}
+
+        {uniqueRows.map((row) => (
+          <div
+            key={`total-${row.label}-${row.y}`}
+            className="absolute select-none font-bold"
+            style={{
+              left: totalX,
+              top: row.y + 6,
+              width: 40,
+              textAlign: 'right',
+              fontSize: 10,
+              color: 'var(--text-muted)',
+            }}
+          >
+            {row.total}
           </div>
         ))}
 
