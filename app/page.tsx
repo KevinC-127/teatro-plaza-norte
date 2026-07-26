@@ -5,7 +5,7 @@ import { SeatMap } from '@/components/SeatMap';
 import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
 import { Legend } from '@/components/Legend';
-import { generateSeedSeats, BLOCK_X, MAX_SIDE_SEATS, SIDE_COUNTS, CENTER_SEATS_PER_ROW } from '@/lib/seed-data';
+import { generateSeedSeats, BLOCK_X, getRowMax, LEFT_INNER, CENTER_START, RIGHT_INNER } from '@/lib/seed-data';
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
 import { generatePNG } from '@/lib/png-export';
@@ -25,12 +25,20 @@ function applyTheme(theme: 'dark' | 'light') {
   localStorage.setItem('teatro-theme', theme);
 }
 
-const SIDE_ROW_MAX: Record<string, number> = {
-  A: 3, B: 4, C: 4, D: 5, E: 5, F: 6, G: 6, H: 7, I: 7, J: 8, K: 8, L: 8,
-};
-
 function genId(block: string, row: string, num: string): string {
   return `${block}-${row}-${num}`;
+}
+
+function computeCellX(block: SeatBlock, label: string, cell: number): number {
+  const max = getRowMax(block, label);
+  if (block === 'left') {
+    return LEFT_INNER - (max - 1 - cell) * CELL_W;
+  }
+  if (block === 'center') {
+    if (cell < max / 2) return CENTER_START + cell * CELL_W;
+    return CENTER_START + (cell + 6) * CELL_W;
+  }
+  return RIGHT_INNER + cell * CELL_W;
 }
 
 function findBestRowForBlock(
@@ -48,9 +56,8 @@ function findBestRowForBlock(
     .sort((a, b) => b.y - a.y);
 
   for (const row of allRows) {
-    const maxCells = block === 'center'
-      ? CENTER_SEATS_PER_ROW
-      : (SIDE_ROW_MAX[row.label] ?? 4);
+    const maxCells = getRowMax(block, row.label);
+    if (maxCells === 0) continue;
 
     const occupiedCells = new Set(
       seats
@@ -60,12 +67,7 @@ function findBestRowForBlock(
 
     for (let cell = 0; cell < maxCells; cell++) {
       if (occupiedCells.has(cell)) continue;
-      let cellX: number;
-      if (block === 'left') {
-        cellX = baseX + (MAX_SIDE_SEATS - maxCells + cell) * CELL_W;
-      } else {
-        cellX = baseX + cell * CELL_W;
-      }
+      const cellX = computeCellX(block, row.label, cell);
 
       const existing = seats.filter(
         (s) => s.block === block && s.rowLabel === row.label

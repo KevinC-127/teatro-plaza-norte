@@ -1,59 +1,56 @@
-import type { Seat, SeatStatus, AccessibilityType } from '@/types/seat';
+import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/seat';
 
 export const CELL_W = 32;
 export const CELL_H = 30;
-const MAX_SIDE_SEATS = 8;
-export const CENTER_SEATS_PER_ROW = 28;
+
+const LEFT_INNER = 320;
+const CENTER_START = 352;
+const RIGHT_INNER = 832;
 
 export const BLOCK_X: Record<string, number> = {
   left: 64,
-  center: 352,
-  right: 1280,
+  center: CENTER_START,
+  right: RIGHT_INNER,
 };
 
-const CENTER_ROWS_DEF = [
-  { label: 'X', yBase: 750 },
-  { label: 'W', yBase: 720 },
-  { label: 'V', yBase: 690 },
-  { label: 'U', yBase: 660 },
-  { label: 'T', yBase: 630 },
-  { label: 'S', yBase: 600 },
-  { label: 'R', yBase: 570 },
-  { label: 'Q', yBase: 540 },
-  { label: 'P', yBase: 510 },
-  { label: 'O', yBase: 480 },
-  { label: 'N', yBase: 450 },
-  { label: 'M', yBase: 420 },
-  { label: 'L', yBase: 390 },
-  { label: 'K', yBase: 330 },
-  { label: 'J', yBase: 300 },
-  { label: 'I', yBase: 270 },
-  { label: 'H', yBase: 240 },
-  { label: 'G', yBase: 210 },
-  { label: 'F', yBase: 180 },
-  { label: 'E', yBase: 150 },
-  { label: 'D', yBase: 120 },
-  { label: 'C', yBase: 90 },
-  { label: 'B', yBase: 60 },
-  { label: 'A', yBase: 30 },
+interface RowSpec {
+  label: string;
+  y: number;
+  left?: { start: number; count: number };
+  center?: { start: number; count: number; split?: boolean };
+  right?: { start: number; count: number };
+  accessible?: { center: number[] };
+}
+
+const ROW_SPECS: RowSpec[] = [
+  { label: 'X', y: 750, left: { start: 1, count: 11 }, right: { start: 12, count: 10 } },
+  { label: 'W', y: 720, left: { start: 1, count: 8 }, right: { start: 9, count: 8 } },
+  { label: 'V', y: 690, left: { start: 1, count: 9 }, center: { start: 10, count: 14 }, right: { start: 24, count: 9 } },
+  { label: 'U', y: 660, left: { start: 1, count: 9 }, center: { start: 10, count: 14 }, right: { start: 24, count: 9 } },
+  { label: 'T', y: 630, left: { start: 1, count: 9 }, center: { start: 10, count: 14 }, right: { start: 24, count: 9 } },
+  { label: 'S', y: 600, left: { start: 1, count: 8 }, center: { start: 9, count: 14 }, right: { start: 23, count: 8 } },
+  { label: 'R', y: 570, left: { start: 1, count: 8 }, center: { start: 9, count: 14 }, right: { start: 23, count: 8 } },
+  { label: 'Q', y: 540, left: { start: 1, count: 8 }, center: { start: 9, count: 14 }, right: { start: 23, count: 8 } },
+  { label: 'P', y: 510, left: { start: 1, count: 7 }, center: { start: 8, count: 14 }, right: { start: 22, count: 7 } },
+  { label: 'O', y: 480, left: { start: 1, count: 7 }, center: { start: 8, count: 14 }, right: { start: 22, count: 7 } },
+  { label: 'N', y: 450, left: { start: 1, count: 7 }, center: { start: 8, count: 8, split: true }, right: { start: 16, count: 7 } },
+  { label: 'M', y: 420, left: { start: 1, count: 6 }, center: { start: 7, count: 8, split: true }, right: { start: 15, count: 6 } },
+  { label: 'L', y: 390, left: { start: 1, count: 6 }, center: { start: 7, count: 8, split: true }, right: { start: 15, count: 6 } },
+  { label: 'K', y: 330, left: { start: 1, count: 6 }, center: { start: 7, count: 14 }, right: { start: 21, count: 6 } },
+  { label: 'J', y: 300, left: { start: 1, count: 6 }, center: { start: 7, count: 14 }, right: { start: 21, count: 6 } },
+  { label: 'I', y: 270, left: { start: 1, count: 6 }, center: { start: 7, count: 14 }, right: { start: 21, count: 6 } },
+  { label: 'H', y: 240, left: { start: 1, count: 5 }, center: { start: 6, count: 14 }, right: { start: 20, count: 5 } },
+  { label: 'G', y: 210, left: { start: 1, count: 5 }, center: { start: 6, count: 14 }, right: { start: 20, count: 5 } },
+  { label: 'F', y: 180, left: { start: 1, count: 5 }, center: { start: 6, count: 14 }, right: { start: 20, count: 5 } },
+  { label: 'E', y: 150, left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
+  { label: 'D', y: 120, left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
+  { label: 'C', y: 90, left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
+  { label: 'B', y: 60, center: { start: 5, count: 14 }, accessible: { center: [5, 6, 7, 8, 15, 16, 17, 18] } },
 ];
 
-const SIDE_ROWS_DEF = [
-  { label: 'L', yBase: 390 },
-  { label: 'K', yBase: 330 },
-  { label: 'J', yBase: 300 },
-  { label: 'I', yBase: 270 },
-  { label: 'H', yBase: 240 },
-  { label: 'G', yBase: 210 },
-  { label: 'F', yBase: 180 },
-  { label: 'E', yBase: 150 },
-  { label: 'D', yBase: 120 },
-  { label: 'C', yBase: 90 },
-  { label: 'B', yBase: 60 },
-  { label: 'A', yBase: 30 },
-];
+export const ROW_LABELS_ALL = ROW_SPECS.map((r) => r.label).reverse();
 
-const SIDE_COUNTS = [8, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3];
+const ACCESSIBLE_COLOR = '#eab308';
 
 export const DEFAULT_COLORS: Record<SeatStatus, string> = {
   free: '#e2e4e9',
@@ -61,16 +58,12 @@ export const DEFAULT_COLORS: Record<SeatStatus, string> = {
   reserved: '#ef4444',
 };
 
-const ACCESSIBLE_COLOR = '#eab308';
-
-export const ROW_LABELS_ALL = CENTER_ROWS_DEF.map((r) => r.label).reverse();
-
 function makeId(block: string, row: string, num: number): string {
   return `${block}-${row}-${num}`;
 }
 
 function createSeat(
-  block: Seat['block'],
+  block: SeatBlock,
   row: string,
   num: number,
   x: number,
@@ -78,8 +71,6 @@ function createSeat(
   overrides: Partial<Seat> = {}
 ): Seat {
   const finalId = overrides.id ?? makeId(block, row, num);
-  const finalSeedX = overrides.seedX ?? x;
-  const finalSeedY = overrides.seedY ?? y;
   return {
     block,
     rowId: `${block}-${row}`,
@@ -94,58 +85,69 @@ function createSeat(
     accessibilityType: 'normal',
     ...overrides,
     id: finalId,
-    seedX: finalSeedX,
-    seedY: finalSeedY,
+    seedX: x,
+    seedY: y,
   } satisfies Seat;
 }
 
-function generateCenterSeats(): Seat[] {
+function generateSeats(): Seat[] {
   const seats: Seat[] = [];
-  const baseX = BLOCK_X.center;
-  for (const { label, yBase } of CENTER_ROWS_DEF) {
-    for (let n = 1; n <= CENTER_SEATS_PER_ROW; n++) {
-      const x = baseX + (n - 1) * CELL_W;
-      seats.push(createSeat('center', label, n, x, yBase));
-    }
-  }
-  return seats;
-}
 
-function generateSideSeats(side: 'left' | 'right'): Seat[] {
-  const seats: Seat[] = [];
-  const baseX = BLOCK_X[side];
-  SIDE_ROWS_DEF.forEach(({ label, yBase }, rowIdx) => {
-    const count = SIDE_COUNTS[rowIdx];
-    for (let n = 1; n <= count; n++) {
-      let x: number;
-      if (side === 'left') {
-        x = baseX + (MAX_SIDE_SEATS - count + (n - 1)) * CELL_W;
-      } else {
-        x = baseX + (n - 1) * CELL_W;
+  for (const spec of ROW_SPECS) {
+    const { label, y, left, center, right, accessible } = spec;
+
+    if (left) {
+      for (let i = 0; i < left.count; i++) {
+        const num = left.start + i;
+        const cx = LEFT_INNER - (left.count - 1 - i) * CELL_W;
+        seats.push(createSeat('left', label, num, cx, y));
       }
-      seats.push(createSeat(side, label, n, x, yBase));
     }
-  });
-  return seats;
-}
 
-function applyAccessible(seats: Seat[]): void {
-  const accessibleYellow: Record<string, AccessibilityType> = {
-    'center-A-13': 'wheelchair-space',
-    'center-A-14': 'wheelchair-space',
-    'center-A-15': 'companion-seat',
-    'center-A-16': 'companion-seat',
-    'center-B-13': 'accessible-seat',
-    'center-B-14': 'accessible-seat',
-    'center-B-15': 'accessible-seat',
-    'center-B-16': 'accessible-seat',
-  };
-  for (const seat of seats) {
-    if (accessibleYellow[seat.id]) {
-      seat.color = ACCESSIBLE_COLOR;
-      seat.accessibilityType = accessibleYellow[seat.id];
+    if (center) {
+      if (center.split) {
+        const half = center.count / 2;
+        for (let i = 0; i < half; i++) {
+          const num = center.start + i;
+          const cx = CENTER_START + i * CELL_W;
+          seats.push(createSeat('center', label, num, cx, y));
+        }
+        for (let i = 0; i < half; i++) {
+          const num = center.start + half + i;
+          const cx = CENTER_START + (half + 6) * CELL_W + i * CELL_W;
+          seats.push(createSeat('center', label, num, cx, y));
+        }
+      } else {
+        for (let i = 0; i < center.count; i++) {
+          const num = center.start + i;
+          const cx = CENTER_START + i * CELL_W;
+          seats.push(createSeat('center', label, num, cx, y));
+        }
+      }
+    }
+
+    if (right) {
+      for (let i = 0; i < right.count; i++) {
+        const num = right.start + i;
+        const cx = RIGHT_INNER + i * CELL_W;
+        seats.push(createSeat('right', label, num, cx, y));
+      }
+    }
+
+    if (accessible) {
+      for (const sn of accessible.center ?? []) {
+        const seat = seats.find(
+          (s) => s.block === 'center' && s.rowLabel === label && s.seatNumber === String(sn)
+        );
+        if (seat) {
+          seat.color = ACCESSIBLE_COLOR;
+          seat.accessibilityType = 'wheelchair-space';
+        }
+      }
     }
   }
+
+  return seats;
 }
 
 function applyDemoReservations(seats: Seat[]): void {
@@ -153,9 +155,9 @@ function applyDemoReservations(seats: Seat[]): void {
     'center-F-12': { status: 'reserved', reservedFor: 'Kevin' },
     'center-F-13': { status: 'reserved', reservedFor: 'Kevin' },
     'center-F-14': { status: 'reserved', reservedFor: 'Kevin' },
-    'center-G-5': { status: 'pending', reservedFor: 'María' },
-    'center-G-6': { status: 'pending', reservedFor: 'María' },
-    'center-G-7': { status: 'pending', reservedFor: 'María' },
+    'center-G-6': { status: 'pending', reservedFor: 'Maria' },
+    'center-G-7': { status: 'pending', reservedFor: 'Maria' },
+    'center-G-8': { status: 'pending', reservedFor: 'Maria' },
   };
   for (const seat of seats) {
     const r = reservations[seat.id];
@@ -168,14 +170,21 @@ function applyDemoReservations(seats: Seat[]): void {
 }
 
 export function generateSeedSeats(): Seat[] {
-  const seats = [
-    ...generateCenterSeats(),
-    ...generateSideSeats('left'),
-    ...generateSideSeats('right'),
-  ];
-  applyAccessible(seats);
+  const seats = generateSeats();
   applyDemoReservations(seats);
   return seats;
 }
 
-export { MAX_SIDE_SEATS, SIDE_COUNTS, CENTER_ROWS_DEF };
+export function getRowSpec(label: string): RowSpec | undefined {
+  return ROW_SPECS.find((r) => r.label === label);
+}
+
+export function getRowMax(block: SeatBlock, label: string): number {
+  const spec = getRowSpec(label);
+  if (!spec) return 0;
+  if (block === 'center') return spec.center?.count ?? 0;
+  if (block === 'left') return spec.left?.count ?? 0;
+  return spec.right?.count ?? 0;
+}
+
+export { ROW_SPECS, LEFT_INNER, CENTER_START, RIGHT_INNER };
