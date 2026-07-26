@@ -11,11 +11,16 @@ interface ToolbarProps {
   onGeneratePNG: () => void;
   onGenerateFullMap: () => void;
   onClearSelection: () => void;
+  customers: string[];
+  selectedCustomer: string | null;
+  onSelectCustomer: (name: string | null) => void;
+  onGeneratePDF: () => void;
 }
 
 export function Toolbar({
   theme, onToggleTheme, selectedCount, multiSelect, onToggleMultiSelect,
   onGeneratePNG, onGenerateFullMap, onClearSelection,
+  customers, selectedCustomer, onSelectCustomer, onGeneratePDF,
 }: ToolbarProps) {
   const s = { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' };
   const b = { backgroundColor: 'var(--bg-surface-hover)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' };
@@ -45,6 +50,27 @@ export function Toolbar({
         style={multiSelect ? { backgroundColor: '#7c3aed', borderColor: '#6d28d9', color: '#fff' } : b}>
         {multiSelect ? 'Multi ON' : 'Multi'}
       </button>
+
+      {customers.length > 0 && (
+        <>
+          <div className="h-4 w-px mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
+          <select value={selectedCustomer || ''} onChange={e => onSelectCustomer(e.target.value || null)}
+            className="px-2 py-1 rounded border text-xs max-w-[130px]"
+            style={{
+              ...b,
+              color: 'var(--text-primary)',
+              backgroundImage: 'none',
+            }}>
+            <option value="">Cliente...</option>
+            {customers.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button onClick={onGeneratePDF} disabled={!selectedCustomer}
+            className="px-2 py-1 rounded border font-medium disabled:opacity-30"
+            style={{ backgroundColor: '#dc2626', borderColor: '#b91c1c', color: '#fff' }}>
+            PDF Boleta
+          </button>
+        </>
+      )}
 
       {selectedCount > 0 && (
         <button onClick={onClearSelection} className="px-2 py-1 rounded border ml-auto" style={b}>

@@ -8,6 +8,7 @@ import { generateSeedSeats } from '@/lib/seed-data';
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
 import { generatePNG, generateFullMapPNG } from '@/lib/png-export';
+import { generatePDFReceipt, getPurchaseCounter, incrementPurchaseCounter } from '@/lib/pdf-receipt';
 import { snapX, snapY } from '@/lib/seat-layout';
 import type { Seat, SeatStatus, SeatBlock } from '@/types/seat';
 
@@ -31,6 +32,7 @@ export default function Home() {
   const [toast, setToast] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const init = useRef(false);
 
   useEffect(() => {
@@ -60,6 +62,10 @@ export default function Home() {
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
   const sel = useMemo(() => seats.filter(s => selectedIds.has(s.id)), [seats, selectedIds]);
+
+  const customers = useMemo(() => {
+    return [...new Set(seats.filter(s => s.reservedFor?.trim()).map(s => s.reservedFor.trim()))].sort();
+  }, [seats]);
 
   const moveSeats = useCallback((ids: string[], dx: number, dy: number) => {
     setSeats(p => p.map(s => ids.includes(s.id) ? { ...s, x: snapX(s.x + dx), y: snapY(s.y + dy) } : s));
@@ -105,6 +111,14 @@ export default function Home() {
     toastFn('Mapa exportado');
   }, [seats, theme, toastFn]);
 
+  const handleGeneratePDF = useCallback(() => {
+    if (!selectedCustomer) { toastFn('Selecciona un cliente'); return; }
+    const num = getPurchaseCounter();
+    generatePDFReceipt(seats, selectedCustomer, num);
+    incrementPurchaseCounter();
+    toastFn('PDF generado para ' + selectedCustomer);
+  }, [seats, selectedCustomer, toastFn]);
+
   const single = sel.length === 1 ? sel[0] : null;
 
   return (
@@ -114,6 +128,8 @@ export default function Home() {
         onToggleMultiSelect={() => setMultiSelect(v => !v)}
         onGeneratePNG={png} onGenerateFullMap={fullMap}
         onClearSelection={clearSelection}
+        customers={customers} selectedCustomer={selectedCustomer}
+        onSelectCustomer={setSelectedCustomer} onGeneratePDF={handleGeneratePDF}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">
