@@ -16,9 +16,8 @@ interface ToolbarProps {
   selectedCount: number;
   onAlignSelected: () => void;
   onResetPositions: () => void;
-  onExport: () => void;
-  onImport: () => void;
   onWhatsAppCopy: () => void;
+  onGeneratePNG: () => void;
   accessibilityType: AccessibilityType;
   onAccessibilityChange: (type: AccessibilityType) => void;
   onClearSelection: () => void;
@@ -36,9 +35,8 @@ export function Toolbar({
   selectedCount,
   onAlignSelected,
   onResetPositions,
-  onExport,
-  onImport,
   onWhatsAppCopy,
+  onGeneratePNG,
   accessibilityType,
   onAccessibilityChange,
   onClearSelection,
@@ -141,6 +139,10 @@ export function Toolbar({
           <button onClick={onResetPositions} disabled={selectedCount === 0}
             className="px-2 py-1 rounded border transition-colors disabled:opacity-30"
             style={btnBase}>Reset posición</button>
+
+          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            | Clic en canvas = agregar butaca
+          </span>
         </>
       )}
 
@@ -155,12 +157,13 @@ export function Toolbar({
         WhatsApp {selectedCount > 0 ? `(${selectedCount})` : ''}
       </button>
 
-      <button onClick={onExport} className="px-2 py-1 rounded border transition-colors" style={btnBase}>
-        Exportar JSON
-      </button>
-
-      <button onClick={onImport} className="px-2 py-1 rounded border transition-colors" style={btnBase}>
-        Importar JSON
+      <button
+        onClick={onGeneratePNG}
+        disabled={selectedCount === 0}
+        className="px-2 py-1 rounded border font-medium transition-colors disabled:opacity-30"
+        style={{ backgroundColor: '#7c3aed', borderColor: '#6d28d9', color: '#fff' }}
+      >
+        Generar PNG {selectedCount > 0 ? `(${selectedCount})` : ''}
       </button>
 
       {selectedCount > 0 && (
@@ -171,7 +174,7 @@ export function Toolbar({
 
       {editMode && (
         <span className="ml-auto text-[10px]" style={{ color: 'var(--text-muted)' }}>
-          Flechas = mover | Shift+Flechas = ×3 | Esc = limpiar
+          Flechas = mover | Shift+Flechas = x3 | Esc = limpiar
         </span>
       )}
     </div>

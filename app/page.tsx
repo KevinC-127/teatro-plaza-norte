@@ -6,9 +6,11 @@ import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
 import { Legend } from '@/components/Legend';
 import { generateSeedSeats } from '@/lib/seed-data';
-import { loadSeats, saveSeats, exportJSON, importJSON } from '@/lib/storage';
+import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
-import type { Seat, SeatStatus, AccessibilityType } from '@/types/seat';
+import { generatePNG } from '@/lib/png-export';
+import { snapToGrid } from '@/lib/seat-layout';
+import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/seat';
 
 function getTheme(): 'dark' | 'light' {
   if (typeof window === 'undefined') return 'dark';
@@ -22,6 +24,10 @@ function applyTheme(theme: 'dark' | 'light') {
   localStorage.setItem('teatro-theme', theme);
 }
 
+function genId(block: string, row: string, num: string): string {
+  return `${block}-${row}-${num}`;
+}
+
 export default function Home() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -30,13 +36,13 @@ export default function Home() {
   const [gridSize, setGridSize] = useState(16);
   const [toast, setToast] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const initialized = useRef(false);
+  const seatMapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setTheme(getTheme());
     const saved = loadSeats();
-    if (saved) {
+    if (saved && saved.length > 0) {
       setSeats(saved);
     } else {
       const seed = generateSeedSeats();
@@ -87,9 +93,50 @@ export default function Home() {
 
   const moveSeats = useCallback((ids: string[], dx: number, dy: number) => {
     setSeats((prev) =>
-      prev.map((s) => (ids.includes(s.id) ? { ...s, x: s.x + dx, y: s.y + dy } : s))
+      prev.map((s) => {
+        if (!ids.includes(s.id)) return s;
+        return {
+          ...s,
+          x: snapToGrid(s.x + dx, gridSize),
+          y: snapToGrid(s.y + dy, gridSize),
+        };
+      })
     );
-  }, []);
+  }, [gridSize]);
+
+  const addSeat = useCallback(
+    (block: SeatBlock, rowLabel: string, x: number, y: number, seatNumber: string) => {
+      const id = genId(block, rowLabel, seatNumber);
+      const exists = seats.find((s) => s.id === id);
+      const finalNum = exists
+        ? String(
+            Math.max(...seats.filter((s) => s.block === block && s.rowLabel === rowLabel).map((s) => Number(s.seatNumber) || 0)) + 1
+          )
+        : seatNumber;
+      const finalId = genId(block, rowLabel, finalNum);
+
+      const newSeat: Seat = {
+        id: finalId,
+        block,
+        rowId: `${block}-${rowLabel}`,
+        rowLabel,
+        seatNumber: finalNum,
+        x,
+        y,
+        color: '#e2e4e9',
+        status: 'free',
+        reservedFor: '',
+        notes: '',
+        accessibilityType: 'normal',
+        seedX: x,
+        seedY: y,
+      };
+
+      setSeats((prev) => [...prev, newSeat]);
+      showToast(`Butaca agreg: ${block} ${rowLabel}-${finalNum}`);
+    },
+    [seats, showToast]
+  );
 
   const renameRow = useCallback(
     (blockFilter: Seat['block'], oldLabel: string, newLabel: string) => {
@@ -174,8 +221,8 @@ export default function Home() {
     setSeats((prev) =>
       prev.map((s) => {
         if (!ids.includes(s.id)) return s;
-        const nx = Math.round(s.x / gridSize) * gridSize;
-        const ny = Math.round(s.y / gridSize) * gridSize;
+        const nx = snapToGrid(s.x, gridSize);
+        const ny = snapToGrid(s.y, gridSize);
         return { ...s, x: nx, y: ny };
       })
     );
@@ -193,49 +240,22 @@ export default function Home() {
     showToast('Posiciones reseteadas');
   }, [selectedIds, showToast]);
 
-  const handleExport = useCallback(() => {
-    const json = exportJSON(seats, 'Teatro Plaza Norte', 'ESCENARIO');
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'teatro-plaza-norte-seats.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('JSON exportado');
-  }, [seats, showToast]);
-
-  const handleImport = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const imported = importJSON(reader.result as string);
-          setSeats(imported);
-          setSelectedIds(new Set());
-          saveSeats(imported);
-          showToast(`Importados ${imported.length} asientos`);
-        } catch {
-          showToast('Error al importar JSON');
-        }
-      };
-      reader.readAsText(file);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    },
-    [showToast]
-  );
-
   const handleWhatsAppCopy = useCallback(async () => {
     const text = generateWhatsAppCopy(selectedSeats);
-    if (!text) {
-      showToast('Selecciona al menos un asiento');
-      return;
-    }
+    if (!text) { showToast('Selecciona al menos un asiento'); return; }
     await copyToClipboard(text);
     showToast('Copiado al portapapeles');
   }, [selectedSeats, showToast]);
+
+  const handleGeneratePNG = useCallback(() => {
+    if (selectedIds.size === 0) { showToast('Selecciona al menos un asiento'); return; }
+    const maxX = Math.max(...seats.map((s) => s.x), 0) + 60;
+    const maxY = Math.max(...seats.map((s) => s.y), 0) + 40;
+    const w = Math.max(maxX + 40, 1600);
+    const h = maxY + 40;
+    generatePNG(seats, selectedIds, w, h, gridSize, showGrid, theme);
+    showToast('PNG generado');
+  }, [seats, selectedIds, gridSize, showGrid, theme, showToast]);
 
   const singleSelected = selectedSeats.length === 1 ? selectedSeats[0] : null;
 
@@ -253,16 +273,15 @@ export default function Home() {
         selectedCount={selectedIds.size}
         onAlignSelected={alignSelected}
         onResetPositions={resetSelectedPositions}
-        onExport={handleExport}
-        onImport={() => fileInputRef.current?.click()}
         onWhatsAppCopy={handleWhatsAppCopy}
+        onGeneratePNG={handleGeneratePNG}
         accessibilityType={singleSelected?.accessibilityType ?? 'normal'}
         onAccessibilityChange={(t) => {
           if (selectedIds.size > 0) applyAccessibilityToSelected(t);
         }}
         onClearSelection={clearSelection}
       />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" ref={seatMapRef}>
         <div className="flex-1 overflow-auto relative">
           <SeatMap
             seats={seats}
@@ -274,6 +293,7 @@ export default function Home() {
             onSetSelection={setSelection}
             onMoveSeats={moveSeats}
             onClearSelection={clearSelection}
+            onAddSeat={addSeat}
           />
         </div>
         <Sidebar
@@ -297,13 +317,6 @@ export default function Home() {
         />
       </div>
       <Legend />
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".json"
-        className="hidden"
-        onChange={handleImport}
-      />
       {toast && (
         <div
           className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm z-50 transition-opacity"

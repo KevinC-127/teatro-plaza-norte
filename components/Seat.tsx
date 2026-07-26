@@ -45,8 +45,12 @@ export function SeatComponent({
 
   return (
     <div
+      data-seat="true"
       title={tooltip}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(e);
+      }}
       className="absolute flex items-center justify-center select-none"
       style={{
         left: seat.x + offsetX,

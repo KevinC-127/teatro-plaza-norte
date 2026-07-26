@@ -13,6 +13,16 @@ export const BLOCK_X: Record<string, number> = {
 };
 
 const CENTER_ROWS_DEF = [
+  { label: 'X', yBase: 760 },
+  { label: 'W', yBase: 730 },
+  { label: 'V', yBase: 700 },
+  { label: 'U', yBase: 670 },
+  { label: 'T', yBase: 640 },
+  { label: 'S', yBase: 610 },
+  { label: 'R', yBase: 580 },
+  { label: 'Q', yBase: 550 },
+  { label: 'P', yBase: 520 },
+  { label: 'O', yBase: 490 },
   { label: 'N', yBase: 460 },
   { label: 'M', yBase: 430 },
   { label: 'L', yBase: 400 },
@@ -169,4 +179,4 @@ export function generateSeedSeats(): Seat[] {
   return seats;
 }
 
-export { CENTER_SEATS_PER_ROW, MAX_SIDE_SEATS, SIDE_COUNTS, K_L_GAP_EXTRA };
+export { CENTER_SEATS_PER_ROW, CENTER_ROWS_DEF, MAX_SIDE_SEATS, SIDE_COUNTS, K_L_GAP_EXTRA };

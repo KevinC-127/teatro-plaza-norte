@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import type { Seat } from '@/types/seat';
+import type { Seat, SeatBlock } from '@/types/seat';
 import { snapToGrid } from '@/lib/seat-layout';
+import { BLOCK_X, CENTER_SEATS_PER_ROW, MAX_SIDE_SEATS } from '@/lib/seed-data';
 import { SeatComponent } from './Seat';
 import { GridOverlay } from './Grid';
 
@@ -16,6 +17,29 @@ interface SeatMapProps {
   onSetSelection: (ids: Set<string>) => void;
   onMoveSeats: (ids: string[], dx: number, dy: number) => void;
   onClearSelection: () => void;
+  onAddSeat: (block: SeatBlock, rowLabel: string, x: number, y: number, seatNumber: string) => void;
+}
+
+function findNearestRow(seats: Seat[], snapY: number): { label: string; y: number } {
+  const rows = new Map<string, number>();
+  for (const s of seats) {
+    const key = s.rowLabel;
+    if (!rows.has(key)) rows.set(key, s.y);
+  }
+  let best = '';
+  let bestDist = Infinity;
+  let bestY = snapY;
+  for (const [label, y] of rows) {
+    const dist = Math.abs(y - snapY);
+    if (dist < bestDist) { bestDist = dist; best = label; bestY = y; }
+  }
+  return { label: best, y: bestY };
+}
+
+function findBlockForX(x: number): SeatBlock {
+  if (x < BLOCK_X.center - 30) return 'left';
+  if (x < BLOCK_X.right - 30) return 'center';
+  return 'right';
 }
 
 export function SeatMap({
@@ -27,9 +51,11 @@ export function SeatMap({
   onToggleSelect,
   onMoveSeats,
   onClearSelection,
+  onAddSeat,
 }: SeatMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [wasDrag, setWasDrag] = useState(false);
   const dragRef = useRef<{
     startMouseX: number;
     startMouseY: number;
@@ -40,6 +66,8 @@ export function SeatMap({
 
   const maxX = Math.max(...seats.map((s) => s.x), 0) + 60;
   const maxY = Math.max(...seats.map((s) => s.y), 0) + 40;
+  const canvasW = Math.max(maxX + 40, 1600);
+  const canvasH = maxY + 40;
 
   const uniqueRows = useMemo(() => {
     const seen = new Map<string, { label: string; y: number }>();
@@ -76,6 +104,7 @@ export function SeatMap({
 
       dragRef.current = { startMouseX: e.clientX, startMouseY: e.clientY, seatPositions, dragIds };
       setDragging(true);
+      setWasDrag(false);
       setDragOffset({ x: 0, y: 0 });
       e.preventDefault();
     },
@@ -87,22 +116,38 @@ export function SeatMap({
     const handleMouseMove = (e: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      setDragOffset({ x: e.clientX - drag.startMouseX, y: e.clientY - drag.startMouseY });
+      const rawDx = e.clientX - drag.startMouseX;
+      const rawDy = e.clientY - drag.startMouseY;
+      const firstId = drag.dragIds[0];
+      const firstOrig = drag.seatPositions.get(firstId);
+      if (firstOrig) {
+        const snappedX = snapToGrid(firstOrig.x + rawDx, gridSize) - firstOrig.x;
+        const snappedY = snapToGrid(firstOrig.y + rawDy, gridSize) - firstOrig.y;
+        setDragOffset({ x: snappedX, y: snappedY });
+        if (Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2) setWasDrag(true);
+      }
     };
     const handleMouseUp = (e: MouseEvent) => {
       const drag = dragRef.current;
-      if (!drag) return;
+      if (!drag) { setDragging(false); return; }
       const rawDx = e.clientX - drag.startMouseX;
       const rawDy = e.clientY - drag.startMouseY;
       const sd = gridSize;
+      const moves: Array<{ id: string; dx: number; dy: number }> = [];
       for (const id of drag.dragIds) {
         const orig = drag.seatPositions.get(id);
         if (!orig) continue;
         const tx = snapToGrid(orig.x + rawDx, sd);
         const ty = snapToGrid(orig.y + rawDy, sd);
         if (tx !== orig.x || ty !== orig.y) {
-          onMoveSeats([id], tx - orig.x, ty - orig.y);
+          moves.push({ id, dx: tx - orig.x, dy: ty - orig.y });
         }
+      }
+      if (moves.length > 0) {
+        const ids = moves.map((m) => m.id);
+        const dx = moves[0].dx;
+        const dy = moves[0].dy;
+        onMoveSeats(ids, dx, dy);
       }
       setDragging(false);
       dragRef.current = null;
@@ -118,10 +163,7 @@ export function SeatMap({
   useEffect(() => {
     if (selectedIds.size === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClearSelection();
-        return;
-      }
+      if (e.key === 'Escape') { onClearSelection(); return; }
       if (!editMode) return;
       const step = e.shiftKey ? gridSize * 3 : gridSize;
       let dx = 0, dy = 0;
@@ -143,13 +185,49 @@ export function SeatMap({
     return dragOffset;
   };
 
+  const handleCanvasClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!editMode) return;
+      if (wasDrag) { setWasDrag(false); return; }
+      if (dragging) { setDragging(false); return; }
+
+      const el = e.target as HTMLElement;
+      if (el.closest('[data-seat]')) return;
+
+      const container = containerRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const scrollLeft = container.scrollLeft;
+      const scrollTop = container.scrollTop;
+      const clickX = e.clientX - rect.left + scrollLeft;
+      const clickY = e.clientY - rect.top + scrollTop;
+
+      const snapX = snapToGrid(clickX - 14, gridSize);
+      const snapY = snapToGrid(clickY - 12, gridSize);
+
+      const block = findBlockForX(snapX);
+      const { label: rowLabel } = findNearestRow(seats, snapY);
+
+      const existingInRow = seats.filter(
+        (s) => s.block === block && s.rowLabel === rowLabel
+      );
+      const nextNum = existingInRow.length > 0
+        ? Math.max(...existingInRow.map((s) => Number(s.seatNumber))) + 1
+        : 1;
+
+      onAddSeat(block, rowLabel, snapX, snapY, String(nextNum));
+    },
+    [editMode, wasDrag, dragging, gridSize, seats, onAddSeat]
+  );
+
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-auto">
       <div
         className="relative"
-        style={{ width: Math.max(maxX + 40, 1600), height: maxY + 40, minWidth: '100%' }}
+        style={{ width: canvasW, height: canvasH, minWidth: '100%' }}
+        onClick={handleCanvasClick}
       >
-        {showGrid && <GridOverlay gridSize={gridSize} width={Math.max(maxX + 40, 1600)} height={maxY + 40} />}
+        {showGrid && <GridOverlay gridSize={gridSize} width={canvasW} height={canvasH} />}
 
         <div
           className="absolute left-0 right-0 mx-auto text-center select-none"
@@ -173,7 +251,7 @@ export function SeatMap({
               width: 40,
               textAlign: 'right',
               paddingRight: 8,
-              fontSize: 12,
+              fontSize: 11,
               color: 'var(--text-secondary)',
             }}
           >
