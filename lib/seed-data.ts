@@ -1,4 +1,4 @@
-import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/seat';
+import type { Seat, SeatStatus, SeatBlock } from '@/types/seat';
 
 export const CELL_W = 32;
 export const CELL_H = 30;
@@ -44,47 +44,55 @@ const ROW_SPECS: RowSpec[] = [
   { label: 'F', y: 180, left: { start: 1, count: 5 }, center: { start: 6, count: 14 }, right: { start: 20, count: 5 } },
   { label: 'E', y: 150, left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
   { label: 'D', y: 120, left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
-  { label: 'C', y: 90, left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
-  { label: 'B', y: 60, center: { start: 5, count: 14 }, accessible: { center: [5, 6, 7, 8, 15, 16, 17, 18] } },
+  { label: 'C', y: 90,  left: { start: 1, count: 4 }, center: { start: 5, count: 14 }, right: { start: 19, count: 4 } },
+  { label: 'B', y: 60,  center: { start: 5, count: 14 }, accessible: { center: [5, 6, 7, 8, 15, 16, 17, 18] } },
 ];
 
 export const ROW_LABELS_ALL = ROW_SPECS.map((r) => r.label).reverse();
 
-const ACCESSIBLE_COLOR = '#eab308';
-
-export const DEFAULT_COLORS: Record<SeatStatus, string> = {
+const STATUS_COLORS: Record<SeatStatus, string> = {
   free: '#e2e4e9',
   pending: '#f59e0b',
   reserved: '#ef4444',
 };
 
+const WHEELCHAIR_COLOR = '#eab308';
+
+function getCategory(label: string, block: SeatBlock): { category: string; color: string; price: number } {
+  const row = label;
+  if (row === 'B') return { category: '', color: '#e2e4e9', price: 0 };
+  if (['C', 'D', 'E'].includes(row)) return { category: 'VIP Platinum', color: '#fef3c7', price: 60 };
+  if (['F', 'G', 'H', 'I', 'J', 'K'].includes(row)) return { category: 'Platea Baja', color: '#f3e8ff', price: 50 };
+  if (row >= 'L' && row <= 'V' && block === 'center') return { category: 'Galeria', color: '#dcfce7', price: 45 };
+  if (row >= 'L' && row <= 'S' && (block === 'left' || block === 'right')) {
+    return { category: block === 'left' ? 'Palco Izquierdo' : 'Palco Derecho', color: '#e0f2fe', price: 40 };
+  }
+  if (row >= 'T' && row <= 'X' && block === 'left') return { category: 'Platea Alta Izquierda', color: '#fee2e2', price: 30 };
+  if (row >= 'T' && row <= 'X' && block === 'right') return { category: 'Platea Alta Derecha', color: '#fee2e2', price: 30 };
+  return { category: '', color: '#e2e4e9', price: 0 };
+}
+
 function makeId(block: string, row: string, num: number): string {
   return `${block}-${row}-${num}`;
 }
 
-function createSeat(
-  block: SeatBlock,
-  row: string,
-  num: number,
-  x: number,
-  y: number,
-  overrides: Partial<Seat> = {}
-): Seat {
-  const finalId = overrides.id ?? makeId(block, row, num);
+function createSeat(block: SeatBlock, row: string, num: number, x: number, y: number): Seat {
+  const cat = getCategory(row, block);
   return {
+    id: makeId(block, row, num),
     block,
     rowId: `${block}-${row}`,
     rowLabel: row,
     seatNumber: String(num),
     x,
     y,
-    color: DEFAULT_COLORS.free,
+    color: cat.color,
     status: 'free',
     reservedFor: '',
     notes: '',
     accessibilityType: 'normal',
-    ...overrides,
-    id: finalId,
+    category: cat.category,
+    price: cat.price,
     seedX: x,
     seedY: y,
   } satisfies Seat;
@@ -140,8 +148,8 @@ function generateSeats(): Seat[] {
           (s) => s.block === 'center' && s.rowLabel === label && s.seatNumber === String(sn)
         );
         if (seat) {
-          seat.color = ACCESSIBLE_COLOR;
           seat.accessibilityType = 'wheelchair-space';
+          seat.color = WHEELCHAIR_COLOR;
         }
       }
     }
@@ -164,7 +172,7 @@ function applyDemoReservations(seats: Seat[]): void {
     if (r) {
       seat.status = r.status;
       seat.reservedFor = r.reservedFor;
-      seat.color = DEFAULT_COLORS[r.status];
+      seat.color = STATUS_COLORS[r.status];
     }
   }
 }
@@ -187,4 +195,4 @@ export function getRowMax(block: SeatBlock, label: string): number {
   return spec.right?.count ?? 0;
 }
 
-export { ROW_SPECS, LEFT_INNER, CENTER_START, RIGHT_INNER };
+export { ROW_SPECS, LEFT_INNER, CENTER_START, RIGHT_INNER, STATUS_COLORS };

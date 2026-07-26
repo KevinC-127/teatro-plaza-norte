@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { Seat } from '@/types/seat';
-import { getAccessibilityIcon, getAccessibilityLabel, getStatusLabel, getBlockLabel } from '@/lib/seat-layout';
+import { getStatusLabel } from '@/lib/seat-layout';
 
 interface SeatComponentProps {
   seat: Seat;
@@ -14,6 +14,10 @@ interface SeatComponentProps {
   onClick: (e: React.MouseEvent) => void;
 }
 
+function accessibilityIcon(type: Seat['accessibilityType']): string {
+  return type === 'wheelchair-space' ? 'W' : '';
+}
+
 export function SeatComponent({
   seat,
   isSelected,
@@ -23,25 +27,20 @@ export function SeatComponent({
   offsetY,
   onClick,
 }: SeatComponentProps) {
-  const accessIcon = getAccessibilityIcon(seat.accessibilityType);
-  const accessLabel = getAccessibilityLabel(seat.accessibilityType);
+  const accIcon = accessibilityIcon(seat.accessibilityType);
 
   const tooltip = [
-    getBlockLabel(seat.block),
+    seat.category || 'Sin categoria',
     `Fila ${seat.rowLabel}`,
     `Asiento ${seat.seatNumber}`,
     getStatusLabel(seat.status),
     seat.reservedFor ? `Reservado: ${seat.reservedFor}` : '',
-    `Accesibilidad: ${accessLabel}`,
+    `Precio: S/ ${seat.price.toFixed(2)}`,
+    seat.accessibilityType === 'wheelchair-space' ? 'Silla de ruedas' : '',
     seat.notes ? `Notas: ${seat.notes}` : '',
-  ]
-    .filter(Boolean)
-    .join(' | ');
+  ].filter(Boolean).join(' | ');
 
   const cursor = isEditMode ? (isDragging ? 'grabbing' : 'grab') : 'pointer';
-
-  const seatWidth = 28;
-  const seatHeight = 24;
 
   return (
     <div
@@ -51,8 +50,8 @@ export function SeatComponent({
       style={{
         left: seat.x + offsetX,
         top: seat.y + offsetY,
-        width: seatWidth,
-        height: seatHeight,
+        width: 28,
+        height: 24,
         cursor,
         borderRadius: '4px 4px 2px 2px',
         backgroundColor: seat.color,
@@ -69,21 +68,15 @@ export function SeatComponent({
         opacity: isDragging ? 0.85 : 1,
       }}
     >
-      {accessIcon && (
+      {accIcon && (
         <span
           className="absolute flex items-center justify-center font-bold text-white rounded-full"
           style={{
-            top: -4,
-            right: -4,
-            width: 12,
-            height: 12,
-            fontSize: 7,
-            lineHeight: 1,
-            backgroundColor: '#1e293b',
+            top: -4, right: -4, width: 12, height: 12, fontSize: 7,
+            lineHeight: 1, backgroundColor: '#1e293b',
           }}
-          title={accessLabel}
         >
-          {accessIcon}
+          {accIcon}
         </span>
       )}
       <span>{seat.seatNumber}</span>

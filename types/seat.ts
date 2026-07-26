@@ -1,10 +1,6 @@
 export type SeatStatus = 'free' | 'pending' | 'reserved';
 
-export type AccessibilityType =
-  | 'normal'
-  | 'accessible-seat'
-  | 'wheelchair-space'
-  | 'companion-seat';
+export type AccessibilityType = 'normal' | 'wheelchair-space';
 
 export type SeatBlock = 'left' | 'center' | 'right';
 
@@ -21,6 +17,8 @@ export interface Seat {
   reservedFor: string;
   notes: string;
   accessibilityType: AccessibilityType;
+  category: string;
+  price: number;
   locked?: boolean;
   seedX?: number;
   seedY?: number;

@@ -1,5 +1,5 @@
 import type { Seat } from '@/types/seat';
-import { getBlockLabel, getStatusLabel } from '@/lib/seat-layout';
+import { getStatusLabel } from '@/lib/seat-layout';
 
 const SEAT_W = 28;
 const SEAT_H = 24;
@@ -154,7 +154,7 @@ export function generatePNG(
     ctx.font = '7px Inter, sans-serif';
     for (let i = 0; i < sortedSelected.length; i++) {
       const s = sortedSelected[i];
-      const line = `${getBlockLabel(s.block)} ${s.rowLabel}-${s.seatNumber}${s.reservedFor ? ' | Reservado: ' + s.reservedFor : ''} | ${getStatusLabel(s.status)}`;
+      const line = `${s.category || s.block} ${s.rowLabel}-${s.seatNumber}${s.reservedFor ? ' | R: ' + s.reservedFor : ''} | ${getStatusLabel(s.status)} | S/ ${s.price.toFixed(2)}`;
       ctx.fillStyle = textColor;
       ctx.fillText(line, 20, infoY + infoPadding + infoHeaderH + i * lineHeight + 2);
     }

@@ -4,96 +4,22 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { SeatMap } from '@/components/SeatMap';
 import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
-import { Legend } from '@/components/Legend';
-import { generateSeedSeats, getRowMax, LEFT_INNER, CENTER_START, RIGHT_INNER } from '@/lib/seed-data';
+import { generateSeedSeats } from '@/lib/seed-data';
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
 import { generatePNG } from '@/lib/png-export';
 import { snapX, snapY } from '@/lib/seat-layout';
-import { CELL_W, CELL_H } from '@/lib/seat-layout';
-import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/seat';
+import type { Seat, SeatStatus, SeatBlock } from '@/types/seat';
 
 function getTheme(): 'dark' | 'light' {
   if (typeof window === 'undefined') return 'dark';
-  const stored = localStorage.getItem('teatro-theme');
-  if (stored === 'light' || stored === 'dark') return stored;
+  const s = localStorage.getItem('teatro-theme');
+  if (s === 'light' || s === 'dark') return s;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
-
-function applyTheme(theme: 'dark' | 'light') {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-  localStorage.setItem('teatro-theme', theme);
-}
-
-function genId(block: string, row: string, num: string): string {
-  return `${block}-${row}-${num}`;
-}
-
-function computeCellX(block: SeatBlock, label: string, cell: number): number {
-  const max = getRowMax(block, label);
-  if (block === 'left') {
-    return LEFT_INNER - (max - 1 - cell) * CELL_W;
-  }
-  if (block === 'center') {
-    if (cell < max / 2) return CENTER_START + cell * CELL_W;
-    return CENTER_START + (cell + 6) * CELL_W;
-  }
-  return RIGHT_INNER + cell * CELL_W;
-}
-
-function cellIndexOf(x: number, block: SeatBlock): number {
-  if (block === 'left') return Math.round((LEFT_INNER - x) / CELL_W);
-  if (block === 'right') return Math.round((x - RIGHT_INNER) / CELL_W);
-  return Math.round((x - CENTER_START) / CELL_W);
-}
-
-function findBestRowForBlock(
-  seats: Seat[],
-  block: SeatBlock
-): { rowLabel: string; y: number; seatNumber: string; x: number } | null {
-  const allRows = Array.from(
-    new Map(
-      seats.filter((s) => s.block === block).map((s) => [s.rowLabel, s.y])
-    )
-  )
-    .map(([label, y]) => ({ label, y }))
-    .sort((a, b) => b.y - a.y);
-
-  for (const row of allRows) {
-    const maxCells = getRowMax(block, row.label);
-    if (maxCells === 0) continue;
-
-    const occupiedCells = new Set(
-      seats
-        .filter((s) => s.block === block && s.rowLabel === row.label)
-        .map((s) => cellIndexOf(s.x, block))
-    );
-
-    for (let cell = 0; cell < maxCells; cell++) {
-      if (occupiedCells.has(cell)) continue;
-      const cellX = computeCellX(block, row.label, cell);
-
-      const existing = seats.filter(
-        (s) => s.block === block && s.rowLabel === row.label
-      );
-      const nextNum = existing.length > 0
-        ? Math.max(...existing.map((s) => Number(s.seatNumber) || 0)) + 1
-        : 1;
-
-      let sid = genId(block, row.label, String(nextNum));
-      let num = String(nextNum);
-      let tries = 0;
-      while (seats.some((s) => s.id === sid) && tries < 100) {
-        tries++;
-        num = String(nextNum + tries);
-        sid = genId(block, row.label, num);
-      }
-
-      return { rowLabel: row.label, y: row.y, seatNumber: num, x: cellX };
-    }
-  }
-
-  return null;
+function applyTheme(t: 'dark' | 'light') {
+  document.documentElement.classList.toggle('dark', t === 'dark');
+  localStorage.setItem('teatro-theme', t);
 }
 
 export default function Home() {
@@ -103,252 +29,102 @@ export default function Home() {
   const [showGrid, setShowGrid] = useState(false);
   const [toast, setToast] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const initialized = useRef(false);
+  const init = useRef(false);
 
   useEffect(() => {
     setTheme(getTheme());
     const saved = loadSeats();
-    if (saved && saved.length > 0) {
-      setSeats(saved);
-    } else {
-      const seed = generateSeedSeats();
-      setSeats(seed);
-      saveSeats(seed);
-    }
-    initialized.current = true;
+    if (saved?.length) setSeats(saved);
+    else { const sd = generateSeedSeats(); setSeats(sd); saveSeats(sd); }
+    init.current = true;
   }, []);
 
-  useEffect(() => {
-    if (!initialized.current) return;
-    saveSeats(seats);
-  }, [seats]);
+  useEffect(() => { if (init.current) saveSeats(seats); }, [seats]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      return next;
-    });
+    setTheme(p => { const n = p === 'dark' ? 'light' : 'dark'; applyTheme(n); return n; });
   }, []);
 
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2000);
+  const toastFn = useCallback((m: string) => { setToast(m); setTimeout(() => setToast(''), 2000); }, []);
+
+  const updateSeats = useCallback((ids: string[], ch: Partial<Seat>) => {
+    setSeats(p => p.map(s => ids.includes(s.id) ? { ...s, ...ch } : s));
   }, []);
 
-  const updateSeats = useCallback((ids: string[], changes: Partial<Seat>) => {
-    setSeats((prev) => prev.map((s) => (ids.includes(s.id) ? { ...s, ...changes } : s)));
-  }, []);
-
-  const toggleSelect = useCallback((id: string, ctrlKey: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(ctrlKey ? prev : []);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggleSelect = useCallback((id: string, c: boolean) => {
+    setSelectedIds(p => { const n = new Set(c ? p : []); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  const selectedSeats = useMemo(
-    () => seats.filter((s) => selectedIds.has(s.id)),
-    [seats, selectedIds]
-  );
+  const sel = useMemo(() => seats.filter(s => selectedIds.has(s.id)), [seats, selectedIds]);
 
   const moveSeats = useCallback((ids: string[], dx: number, dy: number) => {
-    setSeats((prev) =>
-      prev.map((s) => {
-        if (!ids.includes(s.id)) return s;
-        return { ...s, x: snapX(s.x + dx), y: snapY(s.y + dy) };
-      })
-    );
+    setSeats(p => p.map(s => ids.includes(s.id) ? { ...s, x: snapX(s.x + dx), y: snapY(s.y + dy) } : s));
   }, []);
 
-  const addSeat = useCallback(
-    (block: SeatBlock) => {
-      const result = findBestRowForBlock(seats, block);
-      if (!result) { showToast(`No hay celdas libres en ${block}`); return; }
-      const { rowLabel, y, seatNumber, x } = result;
-      const sid = genId(block, rowLabel, seatNumber);
+  const addSeat = useCallback((_block: SeatBlock) => {
+    toastFn('Usa el boton de la toolbar en modo edicion');
+  }, [toastFn]);
 
-      const newSeat: Seat = {
-        id: sid,
-        block,
-        rowId: `${block}-${rowLabel}`,
-        rowLabel,
-        seatNumber,
-        x,
-        y,
-        color: '#e2e4e9',
-        status: 'free',
-        reservedFor: '',
-        notes: '',
-        accessibilityType: 'normal',
-        seedX: x,
-        seedY: y,
-      };
-
-      setSeats((prev) => [...prev, newSeat]);
-      showToast(`Agregada: ${block} ${rowLabel}-${seatNumber}`);
-    },
-    [seats, showToast]
-  );
-
-  const renameRow = useCallback(
-    (blockFilter: Seat['block'], oldLabel: string, newLabel: string) => {
-      if (!oldLabel || !newLabel) return;
-      setSeats((prev) =>
-        prev.map((s) => {
-          if (s.block !== blockFilter || s.rowLabel !== oldLabel) return s;
-          return { ...s, rowLabel: newLabel, rowId: `${s.block}-${newLabel}`, id: `${s.block}-${newLabel}-${s.seatNumber}` };
-        })
-      );
-      setSelectedIds(new Set());
-      showToast(`Fila ${oldLabel} -> ${newLabel}`);
-    },
-    [showToast]
-  );
-
-  const renumberRow = useCallback(
-    (blockFilter: Seat['block'], rowLabel: string, startAt: number) => {
-      if (!rowLabel) return;
-      setSeats((prev) => {
-        const rowSeats = prev.filter((s) => s.block === blockFilter && s.rowLabel === rowLabel);
-        const sortedByX = [...rowSeats].sort((a, b) => a.x - b.x);
-        const numberMap = new Map<string, string>();
-        sortedByX.forEach((s, i) => numberMap.set(s.id, String(startAt + i)));
-        return prev.map((s) => {
-          if (s.block !== blockFilter || s.rowLabel !== rowLabel) return s;
-          const newNum = numberMap.get(s.id) ?? s.seatNumber;
-          return { ...s, seatNumber: newNum, id: `${s.block}-${s.rowLabel}-${newNum}` };
-        });
-      });
-      setSelectedIds(new Set());
-      showToast(`Fila ${rowLabel} renumerada desde ${startAt}`);
-    },
-    [showToast]
-  );
-
-  const applyColorToSelected = useCallback((color: string) => {
-    updateSeats(Array.from(selectedIds), { color });
-  }, [selectedIds, updateSeats]);
-
-  const applyStatusToSelected = useCallback((status: SeatStatus) => {
+  const applyColor = useCallback((c: string) => { updateSeats(Array.from(selectedIds), { color: c }); }, [selectedIds, updateSeats]);
+  const applyStatus = useCallback((st: SeatStatus) => {
     const sc: Record<SeatStatus, string> = { free: '#e2e4e9', pending: '#f59e0b', reserved: '#ef4444' };
-    updateSeats(Array.from(selectedIds), { status, color: sc[status] });
+    updateSeats(Array.from(selectedIds), { status: st, color: sc[st] });
   }, [selectedIds, updateSeats]);
+  const applyRes = useCallback((n: string) => { updateSeats(Array.from(selectedIds), { reservedFor: n }); }, [selectedIds, updateSeats]);
 
-  const applyReservationToSelected = useCallback((name: string) => {
-    updateSeats(Array.from(selectedIds), { reservedFor: name });
-  }, [selectedIds, updateSeats]);
-
-  const applyAccessibilityToSelected = useCallback((type: AccessibilityType) => {
-    updateSeats(Array.from(selectedIds), { accessibilityType: type });
-  }, [selectedIds, updateSeats]);
-
-  const alignSelected = useCallback(() => {
-    const ids = Array.from(selectedIds);
-    setSeats((prev) =>
-      prev.map((s) => {
-        if (!ids.includes(s.id)) return s;
-        return { ...s, x: snapX(s.x), y: snapY(s.y) };
-      })
-    );
+  const alignSel = useCallback(() => {
+    setSeats(p => p.map(s => selectedIds.has(s.id) ? { ...s, x: snapX(s.x), y: snapY(s.y) } : s));
+  }, [selectedIds]);
+  const resetSel = useCallback(() => {
+    setSeats(p => p.map(s => selectedIds.has(s.id) && s.seedX != null ? { ...s, x: s.seedX, y: s.seedY! } : s));
   }, [selectedIds]);
 
-  const resetSelectedPositions = useCallback(() => {
-    const ids = Array.from(selectedIds);
-    setSeats((prev) =>
-      prev.map((s) => {
-        if (!ids.includes(s.id) || s.seedX == null || s.seedY == null) return s;
-        return { ...s, x: s.seedX, y: s.seedY };
-      })
-    );
-  }, [selectedIds]);
+  const whatsapp = useCallback(async () => {
+    const t = generateWhatsAppCopy(sel); if (!t) { toastFn('Selecciona al menos un asiento'); return; }
+    await copyToClipboard(t); toastFn('Copiado');
+  }, [sel, toastFn]);
 
-  const handleWhatsAppCopy = useCallback(async () => {
-    const text = generateWhatsAppCopy(selectedSeats);
-    if (!text) { showToast('Selecciona al menos un asiento'); return; }
-    await copyToClipboard(text);
-    showToast('Copiado al portapapeles');
-  }, [selectedSeats, showToast]);
+  const png = useCallback(() => {
+    if (selectedIds.size === 0) { toastFn('Selecciona al menos un asiento'); return; }
+    const mx = Math.max(...seats.map(s => s.x), 0) + 40;
+    const my = Math.max(...seats.map(s => s.y), 0) + 40;
+    generatePNG(seats, selectedIds, Math.max(mx + 180, 1800), my + 40, 0, showGrid, theme);
+    toastFn('PNG generado');
+  }, [seats, selectedIds, showGrid, theme, toastFn]);
 
-  const handleGeneratePNG = useCallback(() => {
-    if (selectedIds.size === 0) { showToast('Selecciona al menos un asiento'); return; }
-    const mx = Math.max(...seats.map((s) => s.x), 0) + 60;
-    const my = Math.max(...seats.map((s) => s.y), 0) + 40;
-    const w = Math.max(mx + 40, 1600);
-    const h = my + 40;
-    generatePNG(seats, selectedIds, w, h, 0, showGrid, theme);
-    showToast('PNG generado');
-  }, [seats, selectedIds, showGrid, theme, showToast]);
-
-  const singleSelected = selectedSeats.length === 1 ? selectedSeats[0] : null;
+  const single = sel.length === 1 ? sel[0] : null;
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <Toolbar
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        editMode={editMode}
-        onToggleEditMode={() => setEditMode((v) => !v)}
-        showGrid={showGrid}
-        onToggleGrid={() => setShowGrid((v) => !v)}
+      <Toolbar theme={theme} onToggleTheme={toggleTheme}
+        editMode={editMode} onToggleEditMode={() => setEditMode(v => !v)}
+        showGrid={showGrid} onToggleGrid={() => setShowGrid(v => !v)}
         selectedCount={selectedIds.size}
-        onAlignSelected={alignSelected}
-        onResetPositions={resetSelectedPositions}
-        onWhatsAppCopy={handleWhatsAppCopy}
-        onGeneratePNG={handleGeneratePNG}
-        onAddSeat={addSeat}
-        accessibilityType={singleSelected?.accessibilityType ?? 'normal'}
-        onAccessibilityChange={(t) => {
-          if (selectedIds.size > 0) applyAccessibilityToSelected(t);
-        }}
+        onAlignSelected={alignSel} onResetPositions={resetSel}
+        onWhatsAppCopy={whatsapp} onGeneratePNG={png}
         onClearSelection={clearSelection}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">
-          <SeatMap
-            seats={seats}
-            selectedIds={selectedIds}
-            editMode={editMode}
-            showGrid={showGrid}
-            onToggleSelect={toggleSelect}
-            onMoveSeats={moveSeats}
-            onClearSelection={clearSelection}
+          <SeatMap seats={seats} selectedIds={selectedIds}
+            editMode={editMode} showGrid={showGrid}
+            onToggleSelect={toggleSelect} onMoveSeats={moveSeats}
+            onClearSelection={clearSelection} onAddSeat={addSeat}
           />
         </div>
-        <Sidebar
-          singleSeat={singleSelected}
-          selectedCount={selectedIds.size}
-          onUpdateSeat={(changes) => {
-            if (singleSelected) updateSeats([singleSelected.id], changes);
-          }}
-          onUpdateSelected={(changes) => updateSeats(Array.from(selectedIds), changes)}
-          onApplyStatus={applyStatusToSelected}
-          onApplyColor={applyColorToSelected}
-          onApplyReservation={applyReservationToSelected}
-          onClearReservation={() => applyReservationToSelected('')}
-          onApplyAccessibility={applyAccessibilityToSelected}
-          onRenameRow={renameRow}
-          onRenumberRow={renumberRow}
-          onAlignSelected={alignSelected}
-          onResetPositions={resetSelectedPositions}
+        <Sidebar singleSeat={single} selectedCount={selectedIds.size}
+          onUpdateSeat={ch => { if (single) updateSeats([single.id], ch); }}
+          onUpdateSelected={ch => updateSeats(Array.from(selectedIds), ch)}
+          onApplyStatus={applyStatus} onApplyColor={applyColor}
+          onApplyReservation={applyRes} onClearReservation={() => applyRes('')}
           editMode={editMode}
-          gridSize={CELL_W}
         />
       </div>
-      <Legend />
       {toast && (
-        <div
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm z-50 transition-opacity"
-          style={{
-            backgroundColor: 'var(--bg-surface)',
-            color: 'var(--text-primary)',
-            border: '1px solid var(--border-color)',
-          }}
-        >
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm z-50"
+          style={{ backgroundColor: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)' }}>
           {toast}
         </div>
       )}
