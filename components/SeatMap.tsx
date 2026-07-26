@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import type { Seat, SeatBlock } from '@/types/seat';
-import { snapToGrid } from '@/lib/seat-layout';
-import { BLOCK_X, CENTER_SEATS_PER_ROW, MAX_SIDE_SEATS } from '@/lib/seed-data';
+import type { Seat } from '@/types/seat';
+import { snapX, snapY, findNearestFreeCell } from '@/lib/seat-layout';
 import { SeatComponent } from './Seat';
 import { GridOverlay } from './Grid';
 
@@ -12,34 +11,9 @@ interface SeatMapProps {
   selectedIds: Set<string>;
   editMode: boolean;
   showGrid: boolean;
-  gridSize: number;
   onToggleSelect: (id: string, ctrlKey: boolean) => void;
-  onSetSelection: (ids: Set<string>) => void;
   onMoveSeats: (ids: string[], dx: number, dy: number) => void;
   onClearSelection: () => void;
-  onAddSeat: (block: SeatBlock, rowLabel: string, x: number, y: number, seatNumber: string) => void;
-}
-
-function findNearestRow(seats: Seat[], snapY: number): { label: string; y: number } {
-  const rows = new Map<string, number>();
-  for (const s of seats) {
-    const key = s.rowLabel;
-    if (!rows.has(key)) rows.set(key, s.y);
-  }
-  let best = '';
-  let bestDist = Infinity;
-  let bestY = snapY;
-  for (const [label, y] of rows) {
-    const dist = Math.abs(y - snapY);
-    if (dist < bestDist) { bestDist = dist; best = label; bestY = y; }
-  }
-  return { label: best, y: bestY };
-}
-
-function findBlockForX(x: number): SeatBlock {
-  if (x < BLOCK_X.center - 30) return 'left';
-  if (x < BLOCK_X.right - 30) return 'center';
-  return 'right';
 }
 
 export function SeatMap({
@@ -47,15 +21,12 @@ export function SeatMap({
   selectedIds,
   editMode,
   showGrid,
-  gridSize,
   onToggleSelect,
   onMoveSeats,
   onClearSelection,
-  onAddSeat,
 }: SeatMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [wasDrag, setWasDrag] = useState(false);
   const dragRef = useRef<{
     startMouseX: number;
     startMouseY: number;
@@ -78,7 +49,7 @@ export function SeatMap({
     return Array.from(seen.values()).sort((a, b) => a.y - b.y);
   }, [seats]);
 
-  const handleMouseDown = useCallback(
+  const handleSeatClick = useCallback(
     (e: React.MouseEvent, seatId: string) => {
       if (!editMode) {
         onToggleSelect(seatId, e.ctrlKey || e.metaKey);
@@ -104,7 +75,6 @@ export function SeatMap({
 
       dragRef.current = { startMouseX: e.clientX, startMouseY: e.clientY, seatPositions, dragIds };
       setDragging(true);
-      setWasDrag(false);
       setDragOffset({ x: 0, y: 0 });
       e.preventDefault();
     },
@@ -121,34 +91,34 @@ export function SeatMap({
       const firstId = drag.dragIds[0];
       const firstOrig = drag.seatPositions.get(firstId);
       if (firstOrig) {
-        const snappedX = snapToGrid(firstOrig.x + rawDx, gridSize) - firstOrig.x;
-        const snappedY = snapToGrid(firstOrig.y + rawDy, gridSize) - firstOrig.y;
-        setDragOffset({ x: snappedX, y: snappedY });
-        if (Math.abs(rawDx) > 2 || Math.abs(rawDy) > 2) setWasDrag(true);
+        const sx = snapX(firstOrig.x + rawDx);
+        const sy = snapY(firstOrig.y + rawDy);
+        setDragOffset({ x: sx - firstOrig.x, y: sy - firstOrig.y });
       }
     };
-    const handleMouseUp = (e: MouseEvent) => {
+    const handleMouseUp = (_e: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) { setDragging(false); return; }
-      const rawDx = e.clientX - drag.startMouseX;
-      const rawDy = e.clientY - drag.startMouseY;
-      const sd = gridSize;
-      const moves: Array<{ id: string; dx: number; dy: number }> = [];
-      for (const id of drag.dragIds) {
-        const orig = drag.seatPositions.get(id);
-        if (!orig) continue;
-        const tx = snapToGrid(orig.x + rawDx, sd);
-        const ty = snapToGrid(orig.y + rawDy, sd);
-        if (tx !== orig.x || ty !== orig.y) {
-          moves.push({ id, dx: tx - orig.x, dy: ty - orig.y });
-        }
+
+      const firstId = drag.dragIds[0];
+      const firstOrig = drag.seatPositions.get(firstId);
+      if (!firstOrig) { setDragging(false); return; }
+
+      const rawDx = _e.clientX - drag.startMouseX;
+      const rawDy = _e.clientY - drag.startMouseY;
+      const targetX = snapX(firstOrig.x + rawDx);
+      const targetY = snapY(firstOrig.y + rawDy);
+
+      const excludeIds = new Set(drag.dragIds);
+      const freeCell = findNearestFreeCell(targetX, targetY, seats, excludeIds);
+
+      const dx = freeCell.x - firstOrig.x;
+      const dy = freeCell.y - firstOrig.y;
+
+      if (dx !== 0 || dy !== 0) {
+        onMoveSeats([...drag.dragIds], dx, dy);
       }
-      if (moves.length > 0) {
-        const ids = moves.map((m) => m.id);
-        const dx = moves[0].dx;
-        const dy = moves[0].dy;
-        onMoveSeats(ids, dx, dy);
-      }
+
       setDragging(false);
       dragRef.current = null;
     };
@@ -158,26 +128,34 @@ export function SeatMap({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, gridSize, onMoveSeats]);
+  }, [dragging, seats, onMoveSeats]);
 
   useEffect(() => {
     if (selectedIds.size === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { onClearSelection(); return; }
       if (!editMode) return;
-      const step = e.shiftKey ? gridSize * 3 : gridSize;
+      const sIds = Array.from(selectedIds);
+      const firstSeat = seats.find((s) => s.id === sIds[0]);
+      if (!firstSeat) return;
+      const stepX = e.shiftKey ? 32 * 3 : 32;
+      const stepY = e.shiftKey ? 30 * 3 : 30;
       let dx = 0, dy = 0;
-      if (e.key === 'ArrowLeft') dx = -step;
-      else if (e.key === 'ArrowRight') dx = step;
-      else if (e.key === 'ArrowUp') dy = -step;
-      else if (e.key === 'ArrowDown') dy = step;
+      if (e.key === 'ArrowLeft') dx = -stepX;
+      else if (e.key === 'ArrowRight') dx = stepX;
+      else if (e.key === 'ArrowUp') dy = -stepY;
+      else if (e.key === 'ArrowDown') dy = stepY;
       else return;
       e.preventDefault();
-      onMoveSeats(Array.from(selectedIds), dx, dy);
+      const targetX = snapX(firstSeat.x + dx);
+      const targetY = snapY(firstSeat.y + dy);
+      const excludeIds = new Set(sIds);
+      const free = findNearestFreeCell(targetX, targetY, seats, excludeIds);
+      onMoveSeats(sIds, free.x - firstSeat.x, free.y - firstSeat.y);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, editMode, gridSize, onMoveSeats, onClearSelection]);
+  }, [selectedIds, editMode, seats, onMoveSeats, onClearSelection]);
 
   const getSeatOffset = (seat: Seat): { x: number; y: number } => {
     if (!dragging || !dragRef.current) return { x: 0, y: 0 };
@@ -185,49 +163,13 @@ export function SeatMap({
     return dragOffset;
   };
 
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!editMode) return;
-      if (wasDrag) { setWasDrag(false); return; }
-      if (dragging) { setDragging(false); return; }
-
-      const el = e.target as HTMLElement;
-      if (el.closest('[data-seat]')) return;
-
-      const container = containerRef.current;
-      if (!container) return;
-      const rect = container.getBoundingClientRect();
-      const scrollLeft = container.scrollLeft;
-      const scrollTop = container.scrollTop;
-      const clickX = e.clientX - rect.left + scrollLeft;
-      const clickY = e.clientY - rect.top + scrollTop;
-
-      const snapX = snapToGrid(clickX - 14, gridSize);
-      const snapY = snapToGrid(clickY - 12, gridSize);
-
-      const block = findBlockForX(snapX);
-      const { label: rowLabel } = findNearestRow(seats, snapY);
-
-      const existingInRow = seats.filter(
-        (s) => s.block === block && s.rowLabel === rowLabel
-      );
-      const nextNum = existingInRow.length > 0
-        ? Math.max(...existingInRow.map((s) => Number(s.seatNumber))) + 1
-        : 1;
-
-      onAddSeat(block, rowLabel, snapX, snapY, String(nextNum));
-    },
-    [editMode, wasDrag, dragging, gridSize, seats, onAddSeat]
-  );
-
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-auto">
       <div
         className="relative"
         style={{ width: canvasW, height: canvasH, minWidth: '100%' }}
-        onClick={handleCanvasClick}
       >
-        {showGrid && <GridOverlay gridSize={gridSize} width={canvasW} height={canvasH} />}
+        {showGrid && <GridOverlay width={canvasW} height={canvasH} />}
 
         <div
           className="absolute left-0 right-0 mx-auto text-center select-none"
@@ -271,7 +213,7 @@ export function SeatMap({
               isDragging={!!isDragging}
               offsetX={offset.x}
               offsetY={offset.y}
-              onClick={(e) => handleMouseDown(e, seat.id)}
+              onClick={(e) => handleSeatClick(e, seat.id)}
             />
           );
         })}

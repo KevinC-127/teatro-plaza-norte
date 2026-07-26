@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
-import { GRID_SIZES } from '@/lib/seat-layout';
-import type { AccessibilityType } from '@/types/seat';
+import React, { useState } from 'react';
+import type { AccessibilityType, SeatBlock } from '@/types/seat';
+import { getBlockLabel } from '@/lib/seat-layout';
 
 interface ToolbarProps {
   theme: 'dark' | 'light';
@@ -11,17 +11,18 @@ interface ToolbarProps {
   onToggleEditMode: () => void;
   showGrid: boolean;
   onToggleGrid: () => void;
-  gridSize: number;
-  onGridSizeChange: (size: number) => void;
   selectedCount: number;
   onAlignSelected: () => void;
   onResetPositions: () => void;
   onWhatsAppCopy: () => void;
   onGeneratePNG: () => void;
+  onAddSeat: (block: SeatBlock) => void;
   accessibilityType: AccessibilityType;
   onAccessibilityChange: (type: AccessibilityType) => void;
   onClearSelection: () => void;
 }
+
+const BLOCKS: SeatBlock[] = ['left', 'center', 'right'];
 
 export function Toolbar({
   theme,
@@ -30,13 +31,12 @@ export function Toolbar({
   onToggleEditMode,
   showGrid,
   onToggleGrid,
-  gridSize,
-  onGridSizeChange,
   selectedCount,
   onAlignSelected,
   onResetPositions,
   onWhatsAppCopy,
   onGeneratePNG,
+  onAddSeat,
   accessibilityType,
   onAccessibilityChange,
   onClearSelection,
@@ -82,14 +82,14 @@ export function Toolbar({
             : btnBase
         }
       >
-        {editMode ? 'Editando' : 'Modo edición'}
+        {editMode ? 'Editando' : 'Modo edicion'}
       </button>
 
       {editMode && (
         <>
           <button
             onClick={onToggleGrid}
-            className="px-2 py-1 rounded border transition-colors"
+            className="px-2 py-1 rounded border transition-colors font-medium"
             style={
               showGrid
                 ? { backgroundColor: '#2563eb', borderColor: '#1d4ed8', color: '#fff' }
@@ -98,22 +98,6 @@ export function Toolbar({
           >
             Malla {showGrid ? 'ON' : 'OFF'}
           </button>
-
-          <select
-            value={gridSize}
-            onChange={(e) => onGridSizeChange(Number(e.target.value))}
-            className="rounded px-1 py-1 text-xs"
-            style={{
-              backgroundColor: 'var(--bg-surface-hover)',
-              borderColor: 'var(--border-color)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-            }}
-          >
-            {GRID_SIZES.map((s) => (
-              <option key={s} value={s}>Grid {s}px</option>
-            ))}
-          </select>
 
           <select
             value={accessibilityType}
@@ -129,8 +113,24 @@ export function Toolbar({
             <option value="normal">Normal</option>
             <option value="accessible-seat">Accesible (A)</option>
             <option value="wheelchair-space">Silla ruedas (W)</option>
-            <option value="companion-seat">Acompañante (C)</option>
+            <option value="companion-seat">Acompanante (C)</option>
           </select>
+
+          <div className="flex items-center gap-0 border rounded" style={{ borderColor: 'var(--border-color)' }}>
+            <span className="px-1.5 py-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+              Anadir
+            </span>
+            {BLOCKS.map((b) => (
+              <button
+                key={b}
+                onClick={() => onAddSeat(b)}
+                className="px-1.5 py-1 text-[10px] border-l transition-colors"
+                style={{ ...btnBase, borderColor: 'var(--border-color)' }}
+              >
+                {getBlockLabel(b).replace('Platea ', '')}
+              </button>
+            ))}
+          </div>
 
           <button onClick={onAlignSelected} disabled={selectedCount === 0}
             className="px-2 py-1 rounded border transition-colors disabled:opacity-30"
@@ -138,11 +138,7 @@ export function Toolbar({
 
           <button onClick={onResetPositions} disabled={selectedCount === 0}
             className="px-2 py-1 rounded border transition-colors disabled:opacity-30"
-            style={btnBase}>Reset posición</button>
-
-          <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-            | Clic en canvas = agregar butaca
-          </span>
+            style={btnBase}>Reset pos</button>
         </>
       )}
 
@@ -163,7 +159,7 @@ export function Toolbar({
         className="px-2 py-1 rounded border font-medium transition-colors disabled:opacity-30"
         style={{ backgroundColor: '#7c3aed', borderColor: '#6d28d9', color: '#fff' }}
       >
-        Generar PNG {selectedCount > 0 ? `(${selectedCount})` : ''}
+        PNG {selectedCount > 0 ? `(${selectedCount})` : ''}
       </button>
 
       {selectedCount > 0 && (
