@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { SeatMap } from '@/components/SeatMap';
 import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
@@ -8,8 +8,19 @@ import { Legend } from '@/components/Legend';
 import { generateSeedSeats } from '@/lib/seed-data';
 import { loadSeats, saveSeats, exportJSON, importJSON } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
-import { GRID_SIZES } from '@/lib/seat-layout';
 import type { Seat, SeatStatus, AccessibilityType } from '@/types/seat';
+
+function getTheme(): 'dark' | 'light' {
+  if (typeof window === 'undefined') return 'dark';
+  const stored = localStorage.getItem('teatro-theme');
+  if (stored === 'light' || stored === 'dark') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme: 'dark' | 'light') {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  localStorage.setItem('teatro-theme', theme);
+}
 
 export default function Home() {
   const [seats, setSeats] = useState<Seat[]>([]);
@@ -18,9 +29,12 @@ export default function Home() {
   const [showGrid, setShowGrid] = useState(false);
   const [gridSize, setGridSize] = useState(16);
   const [toast, setToast] = useState('');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initialized = useRef(false);
 
   useEffect(() => {
+    setTheme(getTheme());
     const saved = loadSeats();
     if (saved) {
       setSeats(saved);
@@ -29,11 +43,21 @@ export default function Home() {
       setSeats(seed);
       saveSeats(seed);
     }
+    initialized.current = true;
   }, []);
 
   useEffect(() => {
-    if (seats.length > 0) saveSeats(seats);
+    if (!initialized.current) return;
+    saveSeats(seats);
   }, [seats]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      return next;
+    });
+  }, []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -54,25 +78,31 @@ export default function Home() {
   }, []);
 
   const setSelection = useCallback((ids: Set<string>) => setSelectedIds(ids), []);
-
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
-  const selectedSeats = seats.filter((s) => selectedIds.has(s.id));
+  const selectedSeats = useMemo(
+    () => seats.filter((s) => selectedIds.has(s.id)),
+    [seats, selectedIds]
+  );
 
   const moveSeats = useCallback((ids: string[], dx: number, dy: number) => {
     setSeats((prev) =>
-      prev.map((s) =>
-        ids.includes(s.id) ? { ...s, x: s.x + dx, y: s.y + dy } : s
-      )
+      prev.map((s) => (ids.includes(s.id) ? { ...s, x: s.x + dx, y: s.y + dy } : s))
     );
   }, []);
 
   const renameRow = useCallback(
     (blockFilter: Seat['block'], oldLabel: string, newLabel: string) => {
+      if (!oldLabel || !newLabel) return;
       setSeats((prev) =>
         prev.map((s) => {
           if (s.block !== blockFilter || s.rowLabel !== oldLabel) return s;
-          return { ...s, rowLabel: newLabel, rowId: `${s.block}-${newLabel}`, id: `${s.block}-${newLabel}-${s.seatNumber}` };
+          return {
+            ...s,
+            rowLabel: newLabel,
+            rowId: `${s.block}-${newLabel}`,
+            id: `${s.block}-${newLabel}-${s.seatNumber}`,
+          };
         })
       );
       setSelectedIds(new Set());
@@ -83,6 +113,7 @@ export default function Home() {
 
   const renumberRow = useCallback(
     (blockFilter: Seat['block'], rowLabel: string, startAt: number) => {
+      if (!rowLabel) return;
       setSeats((prev) => {
         const rowSeats = prev.filter((s) => s.block === blockFilter && s.rowLabel === rowLabel);
         const sortedByX = [...rowSeats].sort((a, b) => a.x - b.x);
@@ -92,11 +123,7 @@ export default function Home() {
         return prev.map((s) => {
           if (s.block !== blockFilter || s.rowLabel !== rowLabel) return s;
           const newNum = numberMap.get(s.id) ?? s.seatNumber;
-          return {
-            ...s,
-            seatNumber: newNum,
-            id: `${s.block}-${s.rowLabel}-${newNum}`,
-          };
+          return { ...s, seatNumber: newNum, id: `${s.block}-${s.rowLabel}-${newNum}` };
         });
       });
       setSelectedIds(new Set());
@@ -116,7 +143,7 @@ export default function Home() {
   const applyStatusToSelected = useCallback(
     (status: SeatStatus) => {
       const statusColors: Record<SeatStatus, string> = {
-        free: '#e5e7eb',
+        free: '#e2e4e9',
         pending: '#f59e0b',
         reserved: '#ef4444',
       };
@@ -190,7 +217,7 @@ export default function Home() {
           setSelectedIds(new Set());
           saveSeats(imported);
           showToast(`Importados ${imported.length} asientos`);
-        } catch (err) {
+        } catch {
           showToast('Error al importar JSON');
         }
       };
@@ -215,6 +242,8 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <Toolbar
+        theme={theme}
+        onToggleTheme={toggleTheme}
         editMode={editMode}
         onToggleEditMode={() => setEditMode((v) => !v)}
         showGrid={showGrid}
@@ -259,8 +288,8 @@ export default function Home() {
           onApplyReservation={applyReservationToSelected}
           onClearReservation={() => applyReservationToSelected('')}
           onApplyAccessibility={applyAccessibilityToSelected}
-          onRenameRow={(block, oldLabel, newLabel) => renameRow(block, oldLabel, newLabel)}
-          onRenumberRow={(block, rowLabel, startAt) => renumberRow(block, rowLabel, startAt)}
+          onRenameRow={renameRow}
+          onRenumberRow={renumberRow}
           onAlignSelected={alignSelected}
           onResetPositions={resetSelectedPositions}
           editMode={editMode}
@@ -276,7 +305,14 @@ export default function Home() {
         onChange={handleImport}
       />
       {toast && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50 transition-opacity">
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg text-sm z-50 transition-opacity"
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-color)',
+          }}
+        >
           {toast}
         </div>
       )}

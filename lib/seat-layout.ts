@@ -1,5 +1,4 @@
 import type { Seat } from '@/types/seat';
-import { CELL_W, CELL_H } from './seed-data';
 
 export function snapToGrid(value: number, gridSize: number): number {
   return Math.round(value / gridSize) * gridSize;
@@ -7,7 +6,7 @@ export function snapToGrid(value: number, gridSize: number): number {
 
 export function getDefaultColor(status: Seat['status']): string {
   switch (status) {
-    case 'free': return '#e5e7eb';
+    case 'free': return '#e2e4e9';
     case 'pending': return '#f59e0b';
     case 'reserved': return '#ef4444';
   }
@@ -42,12 +41,9 @@ export function getStatusLabel(status: Seat['status']): string {
 export function getBlockLabel(block: Seat['block']): string {
   switch (block) {
     case 'left': return 'Platea Izquierda';
-    case 'center-left': return 'Platea Central (izq)';
-    case 'center-right': return 'Platea Central (der)';
+    case 'center': return 'Platea Central';
     case 'right': return 'Platea Derecha';
   }
 }
 
 export const GRID_SIZES = [4, 8, 12, 16, 20, 24, 32];
-
-export { CELL_W, CELL_H };

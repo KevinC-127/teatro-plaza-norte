@@ -1,59 +1,60 @@
 import type { Seat, SeatStatus, AccessibilityType } from '@/types/seat';
 
-const CELL_W = 32;
-const CELL_H = 30;
+export const CELL_W = 32;
+export const CELL_H = 30;
 const MAX_SIDE_SEATS = 8;
+const CENTER_SEATS_PER_ROW = 28;
+const K_L_GAP_EXTRA = 36;
 
-const BLOCK_X: Record<string, number> = {
-  left: 0,
-  'center-left': 296,
-  'center-right': 780,
-  right: 1268,
+export const BLOCK_X: Record<string, number> = {
+  left: 44,
+  center: 340,
+  right: 1276,
 };
 
-const CENTER_SEATS_PER_ROW = 14;
-
-const CENTER_ROWS = [
-  { label: 'N', y: 0 },
-  { label: 'M', y: 30 },
-  { label: 'L', y: 60 },
-  { label: 'K', y: 90 },
-  { label: 'J', y: 120 },
-  { label: 'I', y: 150 },
-  { label: 'H', y: 180 },
-  { label: 'G', y: 210 },
-  { label: 'F', y: 240 },
-  { label: 'E', y: 270 },
-  { label: 'D', y: 300 },
-  { label: 'C', y: 330 },
-  { label: 'B', y: 360 },
-  { label: 'A', y: 390 },
+const CENTER_ROWS_DEF = [
+  { label: 'N', yBase: 460 },
+  { label: 'M', yBase: 430 },
+  { label: 'L', yBase: 400 },
+  { label: 'K', yBase: 334 },
+  { label: 'J', yBase: 304 },
+  { label: 'I', yBase: 274 },
+  { label: 'H', yBase: 244 },
+  { label: 'G', yBase: 214 },
+  { label: 'F', yBase: 184 },
+  { label: 'E', yBase: 154 },
+  { label: 'D', yBase: 124 },
+  { label: 'C', yBase: 94 },
+  { label: 'B', yBase: 64 },
+  { label: 'A', yBase: 34 },
 ];
 
-const SIDE_ROWS = [
-  { label: 'L', y: 60 },
-  { label: 'K', y: 90 },
-  { label: 'J', y: 120 },
-  { label: 'I', y: 150 },
-  { label: 'H', y: 180 },
-  { label: 'G', y: 210 },
-  { label: 'F', y: 240 },
-  { label: 'E', y: 270 },
-  { label: 'D', y: 300 },
-  { label: 'C', y: 330 },
-  { label: 'B', y: 360 },
-  { label: 'A', y: 390 },
+const SIDE_ROWS_DEF = [
+  { label: 'L', yBase: 400 },
+  { label: 'K', yBase: 334 },
+  { label: 'J', yBase: 304 },
+  { label: 'I', yBase: 274 },
+  { label: 'H', yBase: 244 },
+  { label: 'G', yBase: 214 },
+  { label: 'F', yBase: 184 },
+  { label: 'E', yBase: 154 },
+  { label: 'D', yBase: 124 },
+  { label: 'C', yBase: 94 },
+  { label: 'B', yBase: 64 },
+  { label: 'A', yBase: 34 },
 ];
 
 const SIDE_COUNTS = [8, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 3];
 
-const DEFAULT_COLORS: Record<SeatStatus, string> = {
-  free: '#e5e7eb',
+export const DEFAULT_COLORS: Record<SeatStatus, string> = {
+  free: '#e2e4e9',
   pending: '#f59e0b',
   reserved: '#ef4444',
 };
 
 const ACCESSIBLE_COLOR = '#eab308';
+
+export const ROW_LABELS_ALL = CENTER_ROWS_DEF.map((r) => r.label).reverse();
 
 function makeId(block: string, row: string, num: number): string {
   return `${block}-${row}-${num}`;
@@ -91,13 +92,11 @@ function createSeat(
 
 function generateCenterSeats(): Seat[] {
   const seats: Seat[] = [];
-  for (const { label, y } of CENTER_ROWS) {
-    for (let side of ['center-left', 'center-right'] as const) {
-      const baseX = BLOCK_X[side];
-      for (let n = 1; n <= CENTER_SEATS_PER_ROW; n++) {
-        const x = baseX + (n - 1) * CELL_W;
-        seats.push(createSeat(side, label, n, x, y));
-      }
+  const baseX = BLOCK_X.center;
+  for (const { label, yBase } of CENTER_ROWS_DEF) {
+    for (let n = 1; n <= CENTER_SEATS_PER_ROW; n++) {
+      const x = baseX + (n - 1) * CELL_W;
+      seats.push(createSeat('center', label, n, x, yBase));
     }
   }
   return seats;
@@ -106,7 +105,7 @@ function generateCenterSeats(): Seat[] {
 function generateSideSeats(side: 'left' | 'right'): Seat[] {
   const seats: Seat[] = [];
   const baseX = BLOCK_X[side];
-  SIDE_ROWS.forEach(({ label, y }, rowIdx) => {
+  SIDE_ROWS_DEF.forEach(({ label, yBase }, rowIdx) => {
     const count = SIDE_COUNTS[rowIdx];
     for (let n = 1; n <= count; n++) {
       let x: number;
@@ -115,7 +114,7 @@ function generateSideSeats(side: 'left' | 'right'): Seat[] {
       } else {
         x = baseX + (n - 1) * CELL_W;
       }
-      seats.push(createSeat(side, label, n, x, y));
+      seats.push(createSeat(side, label, n, x, yBase));
     }
   });
   return seats;
@@ -123,16 +122,14 @@ function generateSideSeats(side: 'left' | 'right'): Seat[] {
 
 function applyAccessible(seats: Seat[]): void {
   const accessibleYellow: Record<string, AccessibilityType> = {
-    [`center-left-A-12`]: 'wheelchair-space',
-    [`center-left-A-13`]: 'wheelchair-space',
-    [`center-left-A-14`]: 'companion-seat',
-    [`center-right-A-1`]: 'companion-seat',
-    [`center-right-A-2`]: 'wheelchair-space',
-    [`center-right-A-3`]: 'wheelchair-space',
-    [`center-left-B-13`]: 'accessible-seat',
-    [`center-left-B-14`]: 'accessible-seat',
-    [`center-right-B-1`]: 'accessible-seat',
-    [`center-right-B-2`]: 'accessible-seat',
+    'center-A-13': 'wheelchair-space',
+    'center-A-14': 'wheelchair-space',
+    'center-A-15': 'companion-seat',
+    'center-A-16': 'companion-seat',
+    'center-B-13': 'accessible-seat',
+    'center-B-14': 'accessible-seat',
+    'center-B-15': 'accessible-seat',
+    'center-B-16': 'accessible-seat',
   };
   for (const seat of seats) {
     if (accessibleYellow[seat.id]) {
@@ -144,12 +141,12 @@ function applyAccessible(seats: Seat[]): void {
 
 function applyDemoReservations(seats: Seat[]): void {
   const reservations: Record<string, { status: SeatStatus; reservedFor: string }> = {
-    [`center-left-F-12`]: { status: 'reserved', reservedFor: 'Kevin' },
-    [`center-left-F-13`]: { status: 'reserved', reservedFor: 'Kevin' },
-    [`center-left-F-14`]: { status: 'reserved', reservedFor: 'Kevin' },
-    [`center-right-G-5`]: { status: 'pending', reservedFor: 'María' },
-    [`center-right-G-6`]: { status: 'pending', reservedFor: 'María' },
-    [`center-right-G-7`]: { status: 'pending', reservedFor: 'María' },
+    'center-F-12': { status: 'reserved', reservedFor: 'Kevin' },
+    'center-F-13': { status: 'reserved', reservedFor: 'Kevin' },
+    'center-F-14': { status: 'reserved', reservedFor: 'Kevin' },
+    'center-G-5': { status: 'pending', reservedFor: 'María' },
+    'center-G-6': { status: 'pending', reservedFor: 'María' },
+    'center-G-7': { status: 'pending', reservedFor: 'María' },
   };
   for (const seat of seats) {
     const r = reservations[seat.id];
@@ -172,4 +169,4 @@ export function generateSeedSeats(): Seat[] {
   return seats;
 }
 
-export { DEFAULT_COLORS, ACCESSIBLE_COLOR, CELL_W, CELL_H, CENTER_ROWS, SIDE_ROWS, SIDE_COUNTS, CENTER_SEATS_PER_ROW, MAX_SIDE_SEATS, BLOCK_X };
+export { CENTER_SEATS_PER_ROW, MAX_SIDE_SEATS, SIDE_COUNTS, K_L_GAP_EXTRA };

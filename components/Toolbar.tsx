@@ -5,6 +5,8 @@ import { GRID_SIZES } from '@/lib/seat-layout';
 import type { AccessibilityType } from '@/types/seat';
 
 interface ToolbarProps {
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
   editMode: boolean;
   onToggleEditMode: () => void;
   showGrid: boolean;
@@ -23,6 +25,8 @@ interface ToolbarProps {
 }
 
 export function Toolbar({
+  theme,
+  onToggleTheme,
   editMode,
   onToggleEditMode,
   showGrid,
@@ -39,31 +43,60 @@ export function Toolbar({
   onAccessibilityChange,
   onClearSelection,
 }: ToolbarProps) {
+  const surfaceStyle = {
+    backgroundColor: 'var(--bg-surface)',
+    borderColor: 'var(--border-color)',
+  };
+
+  const btnBase = {
+    backgroundColor: 'var(--bg-surface-hover)',
+    borderColor: 'var(--border-color)',
+    color: 'var(--text-secondary)',
+  };
+
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-gray-900 border-b border-gray-700 flex-wrap text-xs">
-      <span className="text-gray-400 font-semibold mr-1">Teatro Plaza Norte</span>
-      <div className="h-4 w-px bg-gray-600 mx-1" />
+    <div
+      className="flex items-center gap-2 px-3 py-2 border-b flex-wrap text-xs"
+      style={surfaceStyle}
+    >
+      <span className="font-semibold mr-1 select-none" style={{ color: 'var(--text-primary)' }}>
+        Teatro Plaza Norte
+      </span>
+      <div className="h-4 w-px mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
+
+      <button
+        onClick={onToggleTheme}
+        className="px-2 py-1 rounded border transition-colors"
+        style={btnBase}
+        title={`Tema: ${theme === 'dark' ? 'oscuro' : 'claro'}`}
+      >
+        {theme === 'dark' ? '\u263E' : '\u2600'}
+      </button>
 
       <button
         onClick={onToggleEditMode}
-        className={`px-2 py-1 rounded border transition-colors ${
-          editMode
-            ? 'bg-yellow-600 border-yellow-500 text-white'
-            : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
+        className={`px-2 py-1 rounded border transition-colors font-medium ${
+          editMode ? 'text-white' : ''
         }`}
+        style={
+          editMode
+            ? { backgroundColor: '#ca8a04', borderColor: '#a16207', color: '#fff' }
+            : btnBase
+        }
       >
-        {editMode ? 'Modo edición ON' : 'Modo edición'}
+        {editMode ? 'Editando' : 'Modo edición'}
       </button>
 
       {editMode && (
         <>
           <button
             onClick={onToggleGrid}
-            className={`px-2 py-1 rounded border transition-colors ${
+            className="px-2 py-1 rounded border transition-colors"
+            style={
               showGrid
-                ? 'bg-blue-700 border-blue-500 text-white'
-                : 'bg-gray-800 border-gray-600 text-gray-300 hover:bg-gray-700'
-            }`}
+                ? { backgroundColor: '#2563eb', borderColor: '#1d4ed8', color: '#fff' }
+                : btnBase
+            }
           >
             Malla {showGrid ? 'ON' : 'OFF'}
           </button>
@@ -71,19 +104,29 @@ export function Toolbar({
           <select
             value={gridSize}
             onChange={(e) => onGridSizeChange(Number(e.target.value))}
-            className="bg-gray-800 border border-gray-600 rounded px-1 py-1 text-gray-200"
+            className="rounded px-1 py-1 text-xs"
+            style={{
+              backgroundColor: 'var(--bg-surface-hover)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+            }}
           >
             {GRID_SIZES.map((s) => (
-              <option key={s} value={s}>
-                Grid {s}px
-              </option>
+              <option key={s} value={s}>Grid {s}px</option>
             ))}
           </select>
 
           <select
             value={accessibilityType}
             onChange={(e) => onAccessibilityChange(e.target.value as AccessibilityType)}
-            className="bg-gray-800 border border-gray-600 rounded px-1 py-1 text-gray-200"
+            className="rounded px-1 py-1 text-xs"
+            style={{
+              backgroundColor: 'var(--bg-surface-hover)',
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+            }}
           >
             <option value="normal">Normal</option>
             <option value="accessible-seat">Accesible (A)</option>
@@ -91,60 +134,44 @@ export function Toolbar({
             <option value="companion-seat">Acompañante (C)</option>
           </select>
 
-          <button
-            onClick={onAlignSelected}
-            disabled={selectedCount === 0}
-            className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700 disabled:opacity-30"
-          >
-            Alinear
-          </button>
+          <button onClick={onAlignSelected} disabled={selectedCount === 0}
+            className="px-2 py-1 rounded border transition-colors disabled:opacity-30"
+            style={btnBase}>Alinear</button>
 
-          <button
-            onClick={onResetPositions}
-            disabled={selectedCount === 0}
-            className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700 disabled:opacity-30"
-          >
-            Reset posición
-          </button>
+          <button onClick={onResetPositions} disabled={selectedCount === 0}
+            className="px-2 py-1 rounded border transition-colors disabled:opacity-30"
+            style={btnBase}>Reset posición</button>
         </>
       )}
 
-      <div className="h-4 w-px bg-gray-600 mx-1" />
+      <div className="h-4 w-px mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
 
       <button
         onClick={onWhatsAppCopy}
         disabled={selectedCount === 0}
-        className="px-2 py-1 rounded bg-green-700 border border-green-600 text-white hover:bg-green-600 disabled:opacity-30"
+        className="px-2 py-1 rounded border font-medium transition-colors disabled:opacity-30"
+        style={{ backgroundColor: '#16a34a', borderColor: '#15803d', color: '#fff' }}
       >
         WhatsApp {selectedCount > 0 ? `(${selectedCount})` : ''}
       </button>
 
-      <button
-        onClick={onExport}
-        className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700"
-      >
+      <button onClick={onExport} className="px-2 py-1 rounded border transition-colors" style={btnBase}>
         Exportar JSON
       </button>
 
-      <button
-        onClick={onImport}
-        className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-300 hover:bg-gray-700"
-      >
+      <button onClick={onImport} className="px-2 py-1 rounded border transition-colors" style={btnBase}>
         Importar JSON
       </button>
 
       {selectedCount > 0 && (
-        <button
-          onClick={onClearSelection}
-          className="px-2 py-1 rounded bg-gray-800 border border-gray-600 text-gray-400 hover:bg-gray-700 ml-auto"
-        >
-          Limpiar selección ({selectedCount})
+        <button onClick={onClearSelection} className="px-2 py-1 rounded border transition-colors ml-auto" style={btnBase}>
+          Limpiar ({selectedCount})
         </button>
       )}
 
       {editMode && (
-        <span className="text-gray-500 text-[10px] ml-auto">
-          Flechas = mover | Shift+Flechas = mover ×3 | Esc = limpiar
+        <span className="ml-auto text-[10px]" style={{ color: 'var(--text-muted)' }}>
+          Flechas = mover | Shift+Flechas = ×3 | Esc = limpiar
         </span>
       )}
     </div>

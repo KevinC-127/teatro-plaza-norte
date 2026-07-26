@@ -6,7 +6,7 @@ export type AccessibilityType =
   | 'wheelchair-space'
   | 'companion-seat';
 
-export type SeatBlock = 'left' | 'center-left' | 'center-right' | 'right';
+export type SeatBlock = 'left' | 'center' | 'right';
 
 export interface Seat {
   id: string;

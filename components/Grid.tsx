@@ -16,8 +16,8 @@ export function GridOverlay({ gridSize, width, height }: GridOverlayProps) {
         width,
         height,
         backgroundImage: `
-          linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px)
+          linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+          linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px)
         `,
         backgroundSize: `${gridSize}px ${gridSize}px`,
       }}

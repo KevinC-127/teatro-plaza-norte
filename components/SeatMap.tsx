@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type { Seat } from '@/types/seat';
 import { snapToGrid } from '@/lib/seat-layout';
 import { SeatComponent } from './Seat';
@@ -25,7 +25,6 @@ export function SeatMap({
   showGrid,
   gridSize,
   onToggleSelect,
-  onSetSelection,
   onMoveSeats,
   onClearSelection,
 }: SeatMapProps) {
@@ -37,11 +36,19 @@ export function SeatMap({
     seatPositions: Map<string, { x: number; y: number }>;
     dragIds: string[];
   } | null>(null);
-
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const maxX = Math.max(...seats.map((s) => s.x), 0) + 60;
-  const maxY = Math.max(...seats.map((s) => s.y), 0) + 90;
+  const maxY = Math.max(...seats.map((s) => s.y), 0) + 40;
+
+  const uniqueRows = useMemo(() => {
+    const seen = new Map<string, { label: string; y: number }>();
+    for (const s of seats) {
+      const key = `${s.rowLabel}@${s.y}`;
+      if (!seen.has(key)) seen.set(key, { label: s.rowLabel, y: s.y });
+    }
+    return Array.from(seen.values()).sort((a, b) => a.y - b.y);
+  }, [seats]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, seatId: string) => {
@@ -59,10 +66,7 @@ export function SeatMap({
 
       const dragIds = Array.from(newSelected.size > 0 ? newSelected : []);
       if (dragIds.length === 0) return;
-
-      if (!newSelected.has(seatId)) {
-        dragIds.push(seatId);
-      }
+      if (!newSelected.has(seatId)) dragIds.push(seatId);
 
       const seatPositions = new Map<string, { x: number; y: number }>();
       for (const id of dragIds) {
@@ -70,13 +74,7 @@ export function SeatMap({
         if (seat) seatPositions.set(id, { x: seat.x, y: seat.y });
       }
 
-      dragRef.current = {
-        startMouseX: e.clientX,
-        startMouseY: e.clientY,
-        seatPositions,
-        dragIds,
-      };
-
+      dragRef.current = { startMouseX: e.clientX, startMouseY: e.clientY, seatPositions, dragIds };
       setDragging(true);
       setDragOffset({ x: 0, y: 0 });
       e.preventDefault();
@@ -86,38 +84,29 @@ export function SeatMap({
 
   useEffect(() => {
     if (!dragging) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const dx = e.clientX - drag.startMouseX;
-      const dy = e.clientY - drag.startMouseY;
-      setDragOffset({ x: dx, y: dy });
+      setDragOffset({ x: e.clientX - drag.startMouseX, y: e.clientY - drag.startMouseY });
     };
-
     const handleMouseUp = (e: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
       const rawDx = e.clientX - drag.startMouseX;
       const rawDy = e.clientY - drag.startMouseY;
       const sd = gridSize;
-
       for (const id of drag.dragIds) {
         const orig = drag.seatPositions.get(id);
         if (!orig) continue;
-        const targetX = snapToGrid(orig.x + rawDx, sd);
-        const targetY = snapToGrid(orig.y + rawDy, sd);
-        const moveDx = targetX - orig.x;
-        const moveDy = targetY - orig.y;
-        if (moveDx !== 0 || moveDy !== 0) {
-          onMoveSeats([id], moveDx, moveDy);
+        const tx = snapToGrid(orig.x + rawDx, sd);
+        const ty = snapToGrid(orig.y + rawDy, sd);
+        if (tx !== orig.x || ty !== orig.y) {
+          onMoveSeats([id], tx - orig.x, ty - orig.y);
         }
       }
-
       setDragging(false);
       dragRef.current = null;
     };
-
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -135,8 +124,7 @@ export function SeatMap({
       }
       if (!editMode) return;
       const step = e.shiftKey ? gridSize * 3 : gridSize;
-      let dx = 0;
-      let dy = 0;
+      let dx = 0, dy = 0;
       if (e.key === 'ArrowLeft') dx = -step;
       else if (e.key === 'ArrowRight') dx = step;
       else if (e.key === 'ArrowUp') dy = -step;
@@ -159,9 +147,39 @@ export function SeatMap({
     <div ref={containerRef} className="relative w-full h-full overflow-auto">
       <div
         className="relative"
-        style={{ width: maxX + 40, height: maxY + 20, minWidth: '100%' }}
+        style={{ width: Math.max(maxX + 40, 1600), height: maxY + 40, minWidth: '100%' }}
       >
-        {showGrid && <GridOverlay gridSize={gridSize} width={maxX + 40} height={maxY + 20} />}
+        {showGrid && <GridOverlay gridSize={gridSize} width={Math.max(maxX + 40, 1600)} height={maxY + 40} />}
+
+        <div
+          className="absolute left-0 right-0 mx-auto text-center select-none"
+          style={{ top: 0, maxWidth: 700 }}
+        >
+          <div className="text-xs tracking-[0.3em] uppercase font-medium mb-1"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            ESCENARIO
+          </div>
+          <div className="h-[2px] rounded mx-8" style={{ backgroundColor: 'var(--text-muted)' }} />
+        </div>
+
+        {uniqueRows.map((row) => (
+          <div
+            key={`row-${row.label}-${row.y}`}
+            className="absolute select-none font-bold"
+            style={{
+              left: 0,
+              top: row.y + 6,
+              width: 40,
+              textAlign: 'right',
+              paddingRight: 8,
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {row.label}
+          </div>
+        ))}
 
         {seats.map((seat) => {
           const offset = getSeatOffset(seat);
@@ -179,16 +197,6 @@ export function SeatMap({
             />
           );
         })}
-
-        <div
-          className="absolute left-0 right-0 mx-auto text-center"
-          style={{ top: maxY - 20, maxWidth: 600 }}
-        >
-          <div className="h-1 bg-gray-500 rounded mx-8" />
-          <div className="text-xs text-gray-400 mt-1 tracking-[0.3em] uppercase select-none">
-            ESCENARIO
-          </div>
-        </div>
       </div>
     </div>
   );

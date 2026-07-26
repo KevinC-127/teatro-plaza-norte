@@ -1,11 +1,5 @@
 import type { Seat } from '@/types/seat';
-
-const BLOCK_LABELS: Record<string, string> = {
-  left: 'Platea Izquierda',
-  'center-left': 'Platea Central (izq)',
-  'center-right': 'Platea Central (der)',
-  right: 'Platea Derecha',
-};
+import { getBlockLabel } from '@/lib/seat-layout';
 
 interface GroupedSeats {
   reservedFor: string;
@@ -44,7 +38,7 @@ export function generateWhatsAppCopy(seats: Seat[]): string {
   const lines: string[] = [];
   for (const g of groups) {
     const name = g.reservedFor || 'Sin asignar';
-    const blockLabel = BLOCK_LABELS[g.block] ?? g.block;
+    const blockLabel = getBlockLabel(g.block as Seat['block']);
     const nums = g.numbers.join(', ');
     lines.push(`${name}: ${blockLabel} fila ${g.rowLabel} asientos ${nums}`);
   }
