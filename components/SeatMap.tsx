@@ -228,7 +228,7 @@ export function SeatMap({
             style={{
               left: 0,
               top: row.y + 6,
-              width: 60,
+              width: 80,
               textAlign: 'right',
               paddingRight: 8,
               fontSize: 11,

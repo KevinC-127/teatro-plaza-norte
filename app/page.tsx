@@ -5,11 +5,11 @@ import { SeatMap } from '@/components/SeatMap';
 import { Toolbar } from '@/components/Toolbar';
 import { Sidebar } from '@/components/Sidebar';
 import { Legend } from '@/components/Legend';
-import { generateSeedSeats, BLOCK_X, getRowMax, LEFT_INNER, CENTER_START, RIGHT_INNER } from '@/lib/seed-data';
+import { generateSeedSeats, getRowMax, LEFT_INNER, CENTER_START, RIGHT_INNER } from '@/lib/seed-data';
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
 import { generatePNG } from '@/lib/png-export';
-import { snapX, snapY, cellIndex } from '@/lib/seat-layout';
+import { snapX, snapY } from '@/lib/seat-layout';
 import { CELL_W, CELL_H } from '@/lib/seat-layout';
 import type { Seat, SeatStatus, AccessibilityType, SeatBlock } from '@/types/seat';
 
@@ -41,12 +41,16 @@ function computeCellX(block: SeatBlock, label: string, cell: number): number {
   return RIGHT_INNER + cell * CELL_W;
 }
 
+function cellIndexOf(x: number, block: SeatBlock): number {
+  if (block === 'left') return Math.round((LEFT_INNER - x) / CELL_W);
+  if (block === 'right') return Math.round((x - RIGHT_INNER) / CELL_W);
+  return Math.round((x - CENTER_START) / CELL_W);
+}
+
 function findBestRowForBlock(
   seats: Seat[],
   block: SeatBlock
 ): { rowLabel: string; y: number; seatNumber: string; x: number } | null {
-  const baseX = BLOCK_X[block];
-
   const allRows = Array.from(
     new Map(
       seats.filter((s) => s.block === block).map((s) => [s.rowLabel, s.y])
@@ -62,7 +66,7 @@ function findBestRowForBlock(
     const occupiedCells = new Set(
       seats
         .filter((s) => s.block === block && s.rowLabel === row.label)
-        .map((s) => cellIndex(s.x, baseX))
+        .map((s) => cellIndexOf(s.x, block))
     );
 
     for (let cell = 0; cell < maxCells; cell++) {
