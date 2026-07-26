@@ -79,18 +79,12 @@ export function generatePDFReceipt(
     const sy = seat.y;
     const isCustomerSeat = customerSeats.some(cs => cs.id === seat.id);
 
-    ctx.fillStyle = seat.color;
+    ctx.fillStyle = isCustomerSeat ? '#3b82f6' : seat.color;
     roundRect(ctx, sx, sy, SW, SH, 4);
     ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.18)';
     ctx.lineWidth = 0.5;
     ctx.stroke();
-
-    if (isCustomerSeat) {
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-    }
 
     if (seat.accessibilityType === 'wheelchair-space') {
       drawWheelchair(ctx, sx + SW - 5, sy + SH - 5, 6);
