@@ -9,12 +9,13 @@ interface ToolbarProps {
   multiSelect: boolean;
   onToggleMultiSelect: () => void;
   onGeneratePNG: () => void;
+  onGenerateFullMap: () => void;
   onClearSelection: () => void;
 }
 
 export function Toolbar({
   theme, onToggleTheme, selectedCount, multiSelect, onToggleMultiSelect,
-  onGeneratePNG, onClearSelection,
+  onGeneratePNG, onGenerateFullMap, onClearSelection,
 }: ToolbarProps) {
   const s = { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' };
   const b = { backgroundColor: 'var(--bg-surface-hover)', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' };
@@ -27,6 +28,11 @@ export function Toolbar({
       <button onClick={onToggleTheme} className="px-2 py-1 rounded border" style={b}
         title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
         {theme === 'dark' ? '\u263E' : '\u2600'}
+      </button>
+
+      <button onClick={onGenerateFullMap} className="px-2 py-1 rounded border font-medium"
+        style={{ backgroundColor: '#059669', borderColor: '#047857', color: '#fff' }}>
+        Mapa PNG
       </button>
 
       <button onClick={onGeneratePNG} disabled={selectedCount === 0}

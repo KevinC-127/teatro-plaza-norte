@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { generateSeedSeats } from '@/lib/seed-data';
 import { loadSeats, saveSeats } from '@/lib/storage';
 import { generateWhatsAppCopy, copyToClipboard } from '@/lib/whatsapp-copy';
-import { generatePNG } from '@/lib/png-export';
+import { generatePNG, generateFullMapPNG } from '@/lib/png-export';
 import { snapX, snapY } from '@/lib/seat-layout';
 import type { Seat, SeatStatus, SeatBlock } from '@/types/seat';
 
@@ -98,6 +98,13 @@ export default function Home() {
     toastFn('PNG generado');
   }, [seats, selectedIds, showGrid, theme, toastFn]);
 
+  const fullMap = useCallback(() => {
+    const mx = Math.max(...seats.map(s => s.x), 0) + 40;
+    const my = Math.max(...seats.map(s => s.y), 0) + 40;
+    generateFullMapPNG(seats, Math.max(mx + 60, 1100), my + 40, theme);
+    toastFn('Mapa exportado');
+  }, [seats, theme, toastFn]);
+
   const single = sel.length === 1 ? sel[0] : null;
 
   return (
@@ -105,7 +112,8 @@ export default function Home() {
       <Toolbar theme={theme} onToggleTheme={toggleTheme}
         selectedCount={selectedIds.size} multiSelect={multiSelect}
         onToggleMultiSelect={() => setMultiSelect(v => !v)}
-        onGeneratePNG={png} onClearSelection={clearSelection}
+        onGeneratePNG={png} onGenerateFullMap={fullMap}
+        onClearSelection={clearSelection}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">

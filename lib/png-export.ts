@@ -152,3 +152,109 @@ export function generatePNG(
     a.click(); URL.revokeObjectURL(url);
   }, 'image/png');
 }
+
+const LEGEND_ITEMS = [
+  { label: 'VIP Platinum', color: '#fef3c7', price: 'S/ 60', rows: 'C-D-E' },
+  { label: 'Platea Baja', color: '#f3e8ff', price: 'S/ 50', rows: 'F-G-H-I-J-K' },
+  { label: 'Galeria', color: '#dcfce7', price: 'S/ 45', rows: 'L-V (centro)' },
+  { label: 'Palco', color: '#e0f2fe', price: 'S/ 40', rows: 'L-S (costados)' },
+  { label: 'Platea Alta', color: '#fee2e2', price: 'S/ 30', rows: 'T-X (costados)' },
+  { label: 'Silla ruedas', color: '#eab308', price: '', rows: 'Fila B (5-8, 15-18)' },
+];
+
+export function generateFullMapPNG(
+  seats: Seat[], width: number, height: number, theme: 'dark' | 'light'
+): void {
+  const lgH = 180;
+  const mapW = width;
+  const mapH = height;
+  const totalH = mapH + 40 + lgH;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = mapW * SCALE; canvas.height = totalH * SCALE;
+  const ctx = canvas.getContext('2d')!;
+  ctx.scale(SCALE, SCALE);
+
+  const bg = theme === 'dark' ? '#0c0c0e' : '#f8f9fb';
+  const tc = theme === 'dark' ? '#e4e4e7' : '#18181b';
+  const mc = theme === 'dark' ? '#a1a1aa' : '#71717a';
+
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, mapW, totalH);
+
+  const rowMap = new Map<string, { label: string; y: number }>();
+  for (const s of seats) {
+    if (!rowMap.has(s.rowLabel)) rowMap.set(s.rowLabel, { label: s.rowLabel, y: s.y });
+  }
+  const sortedRows = Array.from(rowMap.values()).sort((a, b) => a.y - b.y);
+
+  ctx.font = '700 12px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (const row of sortedRows) {
+    ctx.fillStyle = mc; ctx.fillText(row.label, 68, row.y + 12);
+  }
+
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const SW = 28, SH = 24;
+
+  for (const seat of seats) {
+    const sx = seat.x; const sy = seat.y;
+    ctx.fillStyle = seat.color;
+    roundRect(ctx, sx, sy, SW, SH, 4); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 0.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(sx + 2, sy, SW - 4, 2);
+    if (seat.accessibilityType === 'wheelchair-space') {
+      drawWheelchair(ctx, sx + SW - 5, sy + SH - 5, 6);
+    }
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '700 9px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(seat.seatNumber, sx + SW / 2, sy + SH / 2);
+  }
+
+  ctx.fillStyle = mc; ctx.font = '600 9px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center'; ctx.fillText('ESCENARIO', mapW / 2, 10);
+
+  const ly = mapH + 30;
+  ctx.fillStyle = theme === 'dark' ? '#161618' : '#ffffff';
+  roundRect(ctx, 16, ly, mapW - 32, lgH - 20, 8); ctx.fill();
+  ctx.strokeStyle = theme === 'dark' ? '#27272c' : '#d4d4d8';
+  ctx.lineWidth = 0.5; ctx.stroke();
+
+  ctx.fillStyle = tc;
+  ctx.font = '700 14px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Leyenda', 40, ly + 20);
+
+  const colsPerRow = 3;
+  const itemW = (mapW - 80) / colsPerRow;
+
+  ctx.font = '600 12px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < LEGEND_ITEMS.length; i++) {
+    const item = LEGEND_ITEMS[i];
+    const col = i % colsPerRow;
+    const row = Math.floor(i / colsPerRow);
+    const ix = 40 + col * itemW;
+    const iy = ly + 46 + row * 34;
+
+    ctx.fillStyle = item.color;
+    roundRect(ctx, ix, iy - 8, 24, 20, 3); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+    ctx.fillStyle = tc;
+    ctx.textAlign = 'left';
+    ctx.fillText(item.label, ix + 34, iy + 2);
+    ctx.fillStyle = mc;
+    ctx.font = '600 10px Inter, system-ui, sans-serif';
+    ctx.fillText(`${item.price}${item.rows ? '  |  ' + item.rows : ''}`, ix + 34, iy + 2 + 16);
+    ctx.font = '600 12px Inter, system-ui, sans-serif';
+  }
+
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Teatro-Plaza-Norte-Mapa.png';
+    a.click(); URL.revokeObjectURL(url);
+  }, 'image/png');
+}
