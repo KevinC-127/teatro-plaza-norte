@@ -139,7 +139,7 @@ export function generatePDFReceipt(
     align-items: flex-start;
     margin-bottom: 20px;
     padding-bottom: 14px;
-    border-bottom: 2px solid #eab308;
+    border-bottom: 2px solid #52525b;
   }
   .header .title {
     font-size: 20px;
