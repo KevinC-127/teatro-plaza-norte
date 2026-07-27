@@ -18,6 +18,8 @@ interface ToolbarProps {
   onExport: () => void;
   onImport: (json: string) => void;
   onGenerateSummary: () => void;
+  pdfBoletaNum: string;
+  onChangeBoletaNum: (v: string) => void;
 }
 
 export function Toolbar({
@@ -25,6 +27,7 @@ export function Toolbar({
   onGeneratePNG, onGenerateFullMap, onClearSelection,
   customers, selectedCustomer, onSelectCustomer, onGeneratePDF,
   onExport, onImport, onGenerateSummary,
+  pdfBoletaNum, onChangeBoletaNum,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const s = { backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-color)' };
@@ -92,6 +95,11 @@ export function Toolbar({
             <option value="">Cliente...</option>
             {customers.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <input type="text" inputMode="numeric" value={pdfBoletaNum}
+            onChange={e => onChangeBoletaNum(e.target.value)}
+            className="w-12 px-1 py-1 rounded border text-xs text-center"
+            style={{ backgroundColor: 'var(--bg-surface-hover)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            title="Numero de boleta" />
           <button onClick={onGeneratePDF} disabled={!selectedCustomer}
             className="px-2 py-1 rounded border font-medium disabled:opacity-30"
             style={{ backgroundColor: '#dc2626', borderColor: '#b91c1c', color: '#fff' }}>

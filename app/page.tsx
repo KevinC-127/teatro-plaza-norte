@@ -34,6 +34,7 @@ export default function Home() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+  const [pdfBoletaNum, setPdfBoletaNum] = useState('1');
   const init = useRef(false);
 
   useEffect(() => {
@@ -112,13 +113,18 @@ export default function Home() {
     toastFn('Mapa exportado');
   }, [seats, theme, toastFn]);
 
+  useEffect(() => {
+    if (init.current) setPdfBoletaNum(String(getPurchaseCounter()));
+  }, [selectedCustomer]);
+
   const handleGeneratePDF = useCallback(() => {
     if (!selectedCustomer) { toastFn('Selecciona un cliente'); return; }
-    const num = getPurchaseCounter();
+    const num = parseInt(pdfBoletaNum, 10) || getPurchaseCounter();
     generatePDFReceipt(seats, selectedCustomer, num);
     incrementPurchaseCounter();
+    setPdfBoletaNum(String(getPurchaseCounter()));
     toastFn('PDF generado para ' + selectedCustomer);
-  }, [seats, selectedCustomer, toastFn]);
+  }, [seats, selectedCustomer, pdfBoletaNum, toastFn]);
 
   const handleSummary = useCallback(() => {
     generateExecutiveSummary(seats);
@@ -160,6 +166,7 @@ export default function Home() {
         onSelectCustomer={setSelectedCustomer} onGeneratePDF={handleGeneratePDF}
         onExport={handleExport} onImport={handleImport}
         onGenerateSummary={handleSummary}
+        pdfBoletaNum={pdfBoletaNum} onChangeBoletaNum={setPdfBoletaNum}
       />
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-auto relative">
